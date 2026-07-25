@@ -75,3 +75,7 @@ git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
   recorded as `skipped`.
 - Bad cron strings are ignored on save; the previous schedule stays in effect.
 - Ports, image, and mounts are all in `docker-compose.yml`.
+
+## License
+
+[MIT License](LICENSE)
