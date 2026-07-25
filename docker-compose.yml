@@ -1,0 +1,15 @@
+services:
+  repo-ripper:
+    build: .
+    container_name: repo-ripper
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8019:8019"
+    volumes:
+      # App database + WAL (keep this on fast local storage, not the NAS).
+      - ./data:/data
+      # Primary mirror share — point the left side at your NAS mount.
+      - /mnt/nas/git-mirrors:/data/mirrors
+      # Protection copy target — a DIFFERENT share/disk/pool.
+      - /mnt/nas2/git-protection:/data/protection

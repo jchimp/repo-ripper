@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set active = "repos" %}
+{% block content %}
+<div class="eyebrow">Inventory</div>
+<h1>Repositories</h1>
+
+<div class="panel" style="margin-top:20px">
+  <div class="panel-head">
+    <h2>{{ repos | length }} discovered</h2>
+    <span class="spacer"></span>
+    <form method="post" action="/run/scan" hx-post="/run/scan">
+      <button type="submit" class="ghost">Rescan GitHub</button>
+    </form>
+  </div>
+  <div class="panel-body">
+    {% if repos %}
+    <table>
+      <thead>
+        <tr><th>Repository</th><th>Last sync</th><th>Status</th><th class="num">Size</th><th>Backup</th></tr>
+      </thead>
+      <tbody>
+        {% for r in repos %}
+          {% include "_repo_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nothing discovered yet. Run a scan to enrol your GitHub repositories.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

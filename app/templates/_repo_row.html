@@ -1,0 +1,24 @@
+<tr id="repo-{{ r.id }}">
+  <td>
+    <span class="repo-name">{{ r.full_name }}</span>
+    {% if r.private %}<span class="tag">private</span>{% endif %}
+    {% if r.fork %}<span class="tag">fork</span>{% endif %}
+    {% if r.archived %}<span class="tag">archived</span>{% endif %}
+  </td>
+  <td class="mono-cell">{{ r.last_sync_at | fmt_time }}</td>
+  <td>
+    {% if r.last_status %}
+      <span class="pill {{ r.last_status }}" title="{{ r.last_error or '' }}">{{ r.last_status }}</span>
+    {% else %}
+      <span class="pill skipped">pending</span>
+    {% endif %}
+  </td>
+  <td class="num">{{ r.size_bytes | fmt_size }}</td>
+  <td>
+    <button class="toggle" data-on="{{ r.enabled }}"
+            title="{{ 'Enabled — will be mirrored' if r.enabled else 'Disabled — skipped' }}"
+            hx-post="/repos/{{ r.id }}/toggle"
+            hx-target="#repo-{{ r.id }}"
+            hx-swap="outerHTML"></button>
+  </td>
+</tr>

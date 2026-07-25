@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block content %}
+<div class="eyebrow"><a href="/">Dashboard</a> / Job {{ job.id }}</div>
+<h1>{{ job.job_type }} run</h1>
+
+<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:20px">
+  <div class="card">
+    <div class="k">Status</div>
+    <div class="v" style="font-size:18px"><span class="pill {{ job.status }}">{{ job.status }}</span></div>
+  </div>
+  <div class="card">
+    <div class="k">Started</div>
+    <div class="v" style="font-size:16px">{{ job.started_at | fmt_time }}</div>
+  </div>
+  <div class="card">
+    <div class="k">OK / Failed</div>
+    <div class="v">{{ job.ok_count }} <small>/ {{ job.fail_count }}</small></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Summary</h2></div>
+  <div class="panel-body pad">{{ job.summary or '—' }}</div>
+</div>
+
+{% if job.detail %}
+<div class="panel">
+  <div class="panel-head"><h2>Log</h2></div>
+  <div class="panel-body pad">
+    <div class="detail-log">{{ job.detail }}</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

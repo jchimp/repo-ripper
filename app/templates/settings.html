@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% set active = "settings" %}
+{% macro checkbox(key, label, s) %}
+<div class="check">
+  <input type="checkbox" id="{{ key }}" name="{{ key }}" {{ 'checked' if s.get(key) == '1' }}>
+  <label for="{{ key }}">{{ label }}</label>
+</div>
+{% endmacro %}
+{% block content %}
+<div class="eyebrow">Configuration</div>
+<h1>Settings</h1>
+
+{% if saved %}<div class="saved" style="margin-top:16px">Settings saved. Schedules re-applied.</div>{% endif %}
+
+<form method="post" action="/settings" style="margin-top:20px">
+
+  <div class="form-section">
+    <h2>Discovery</h2>
+    {{ checkbox('include_forks', 'Include forks', s) }}
+    {{ checkbox('include_archived', 'Include archived repositories', s) }}
+    {{ checkbox('include_wikis', 'Mirror wikis where present', s) }}
+    {{ checkbox('fetch_lfs', 'Fetch Git LFS objects', s) }}
+  </div>
+
+  <div class="form-section">
+    <h2>Schedules</h2>
+    <div class="hint" style="margin-bottom:14px">
+      Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
+      timezone <span class="mono-cell">{{ cfg.tz }}</span>
+    </div>
+    <div class="field cron">
+      <label for="schedule_scan">Scan GitHub</label>
+      <input type="text" id="schedule_scan" name="schedule_scan" value="{{ s.get('schedule_scan', '') }}">
+    </div>
+    <div class="field cron">
+      <label for="schedule_pull">Pull mirrors</label>
+      <input type="text" id="schedule_pull" name="schedule_pull" value="{{ s.get('schedule_pull', '') }}">
+    </div>
+    <div class="field cron">
+      <label for="schedule_protection">Protection copy</label>
+      <input type="text" id="schedule_protection" name="schedule_protection" value="{{ s.get('schedule_protection', '') }}">
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>Protection copy</h2>
+    <div class="hint" style="margin-bottom:12px">
+      From <span class="mono-cell">{{ cfg.mirror_root }}</span>
+      to <span class="mono-cell">{{ cfg.protection_root }}</span>
+    </div>
+    {{ checkbox('protection_delete', 'Delete extras on the copy (--delete: exact replica)', s) }}
+  </div>
+
+  <div class="form-section">
+    <h2>Telegram notifications</h2>
+    {{ checkbox('telegram_enabled', 'Enable Telegram notifications', s) }}
+    {{ checkbox('notify_on_success', 'Notify on completed jobs', s) }}
+    {{ checkbox('notify_on_fail', 'Notify on failed jobs', s) }}
+    <div class="two-col" style="margin-top:8px">
+      <div class="field">
+        <label for="telegram_bot_token">Bot token</label>
+        <input type="text" id="telegram_bot_token" name="telegram_bot_token"
+               value="{{ s.get('telegram_bot_token', '') }}" placeholder="123456:ABC-DEF...">
+      </div>
+      <div class="field">
+        <label for="telegram_chat_id">Chat ID</label>
+        <input type="text" id="telegram_chat_id" name="telegram_chat_id"
+               value="{{ s.get('telegram_chat_id', '') }}" placeholder="-1001234567890">
+      </div>
+    </div>
+    <button type="button" class="ghost"
+            hx-post="/settings/test-telegram" hx-target="#tg-test" hx-swap="innerHTML">
+      Send test message
+    </button>
+    <span id="tg-test"></span>
+    <div class="hint">Save before testing so the latest token and chat ID are used.</div>
+  </div>
+
+  <button type="submit" class="primary">Save changes</button>
+</form>
+{% endblock %}

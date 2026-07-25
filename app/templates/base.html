@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}repo-ripper{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  {% if user %}
+  <header class="topbar">
+    <a class="wordmark" href="/">repo<span class="sep">·</span>ripper</a>
+    <nav class="nav">
+      <a href="/" class="{{ 'active' if active == 'dashboard' }}">Dashboard</a>
+      <a href="/repos" class="{{ 'active' if active == 'repos' }}">Repositories</a>
+      <a href="/settings" class="{{ 'active' if active == 'settings' }}">Settings</a>
+    </nav>
+    <span class="spacer"></span>
+    <span class="who">{{ user }}</span>
+    <a href="/logout" class="nav" style="color:var(--muted);font-size:13px">Sign out</a>
+  </header>
+  {% endif %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

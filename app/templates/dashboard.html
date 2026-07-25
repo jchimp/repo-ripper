@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block content %}
+<div class="eyebrow">Overview</div>
+<h1>Dashboard</h1>
+
+<div class="grid stats" style="margin-top:20px">
+  <div class="card">
+    <div class="k">Repositories</div>
+    <div class="v">{{ repo_count }}</div>
+  </div>
+  <div class="card">
+    <div class="k">Enabled</div>
+    <div class="v">{{ enabled_count }}</div>
+  </div>
+  <div class="card">
+    <div class="k">Mirror size</div>
+    <div class="v">{{ total_size | fmt_size }}</div>
+  </div>
+  <div class="card">
+    <div class="k">Last run</div>
+    <div class="v" style="font-size:16px">
+      {% if jobs %}{{ jobs[0].job_type }} <small>· {{ jobs[0].started_at | fmt_time }}</small>{% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  {% set meta = {
+    'scan': ('Scan GitHub', 'Discover repositories and enrol new ones.'),
+    'pull': ('Pull mirrors', 'git --mirror every enabled repo to the NAS.'),
+    'protection': ('Protection copy', 'rsync the mirror share to the second share.')
+  } %}
+  {% for jt in ['scan', 'pull', 'protection'] %}
+  <div class="job-control">
+    <div class="name">{{ meta[jt][0] }}</div>
+    <div class="next">next · {{ next_runs[jt] or 'not scheduled' }}</div>
+    <form method="post" action="/run/{{ jt }}" hx-post="/run/{{ jt }}">
+      <button type="submit" class="primary">Run now</button>
+    </form>
+    <div class="desc">{{ meta[jt][1] }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Recent jobs</h2></div>
+  <div class="panel-body">
+    {% if jobs %}
+    <table>
+      <thead>
+        <tr><th>Job</th><th>Status</th><th>Started</th><th>Duration</th><th>Result</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td class="mono-cell">{{ j.job_type }}</td>
+          <td><span class="pill {{ j.status }}">{{ j.status }}</span></td>
+          <td class="mono-cell">{{ j.started_at | fmt_time }}</td>
+          <td class="mono-cell">
+            {%- if j.finished_at -%}{{ '%.0fs' % (j.finished_at - j.started_at) }}{%- else -%}—{%- endif -%}
+          </td>
+          <td>{{ j.summary or '—' }}</td>
+          <td><a href="/jobs/{{ j.id }}">details</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No jobs yet. Run a scan to discover your repositories.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
