@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .. import db, scheduler
+from .. import db, jobs, scheduler
 from ..web import render
 
 router = APIRouter()
@@ -15,6 +15,7 @@ def dashboard(request: Request):
     total_size = sum((r["size_bytes"] or 0) for r in repos)
     return render(request, "dashboard.html", {
         "jobs": db.recent_jobs(15),
+        "job_specs": list(jobs.JOBS.values()),
         "next_runs": scheduler.next_runs(),
         "repo_count": len(repos),
         "enabled_count": len(enabled),
@@ -32,7 +33,7 @@ def job_detail(request: Request, job_id: int):
 
 @router.post("/run/{job_type}")
 def run_now(request: Request, job_type: str):
-    if job_type in scheduler.JOB_TYPES:
+    if job_type in jobs.JOBS:
         scheduler.trigger_now(job_type)
     if request.headers.get("HX-Request"):
         resp = Response(status_code=204)

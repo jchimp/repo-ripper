@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from .. import db, notify, scheduler
+from .. import db, jobs, notify, runtime, scheduler
 from ..config import get_settings
 from ..web import render
 
@@ -12,10 +12,7 @@ _BOOL_KEYS = (
     "include_forks", "include_archived", "include_wikis", "fetch_lfs",
     "telegram_enabled", "notify_on_success", "notify_on_fail", "protection_delete",
 )
-_TEXT_KEYS = (
-    "telegram_chat_id",
-    "schedule_scan", "schedule_pull", "schedule_protection",
-)
+_TEXT_KEYS = ("telegram_chat_id",)
 # Secrets are never sent back to the browser. An empty field on save means
 # "keep the stored value".
 _SECRET_KEYS = ("telegram_bot_token",)
@@ -28,7 +25,10 @@ def settings_page(request: Request):
     return render(request, "settings.html", {
         "s": s,
         "secrets_set": secrets_set,
+        "job_specs": list(jobs.JOBS.values()),
         "cfg": get_settings(),
+        "mirror_root": runtime.mirror_root(),
+        "protection_root": runtime.protection_root(),
         "saved": request.query_params.get("saved"),
     })
 
@@ -38,7 +38,8 @@ async def settings_save(request: Request):
     form = await request.form()
     for key in _BOOL_KEYS:
         db.set_setting(key, "1" if form.get(key) else "0")
-    for key in _TEXT_KEYS:
+    schedule_keys = tuple(spec.schedule_key for spec in jobs.JOBS.values())
+    for key in _TEXT_KEYS + schedule_keys:
         if key in form:
             db.set_setting(key, str(form.get(key)).strip())
     for key in _SECRET_KEYS:

@@ -6,16 +6,18 @@ org repos where the user is a member.
 """
 import httpx
 
+from . import runtime
 from .config import get_settings
 
 
 def list_all_repos(include_forks: bool, include_archived: bool) -> list[dict]:
     s = get_settings()
-    if not s.github_token:
-        raise RuntimeError("GITHUB_TOKEN is not set")
+    token = runtime.github_token()
+    if not token:
+        raise RuntimeError("No GitHub token is configured")
 
     headers = {
-        "Authorization": f"Bearer {s.github_token}",
+        "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }

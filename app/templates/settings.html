@@ -29,25 +29,21 @@
       Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
       timezone <span class="mono-cell">{{ cfg.tz }}</span>
     </div>
+    {% for spec in job_specs %}
     <div class="field cron">
-      <label for="schedule_scan">Scan GitHub</label>
-      <input type="text" id="schedule_scan" name="schedule_scan" value="{{ s.get('schedule_scan', '') }}">
+      <label for="{{ spec.schedule_key }}">{{ spec.label }}</label>
+      <input type="text" id="{{ spec.schedule_key }}" name="{{ spec.schedule_key }}"
+             value="{{ s.get(spec.schedule_key, spec.default_cron) }}">
     </div>
-    <div class="field cron">
-      <label for="schedule_pull">Pull mirrors</label>
-      <input type="text" id="schedule_pull" name="schedule_pull" value="{{ s.get('schedule_pull', '') }}">
-    </div>
-    <div class="field cron">
-      <label for="schedule_protection">Protection copy</label>
-      <input type="text" id="schedule_protection" name="schedule_protection" value="{{ s.get('schedule_protection', '') }}">
-    </div>
+    {% endfor %}
+    <div class="hint">Leave a schedule empty to run that job by hand only.</div>
   </div>
 
   <div class="form-section">
     <h2>Protection copy</h2>
     <div class="hint" style="margin-bottom:12px">
-      From <span class="mono-cell">{{ cfg.mirror_root }}</span>
-      to <span class="mono-cell">{{ cfg.protection_root }}</span>
+      From <span class="mono-cell">{{ mirror_root }}</span>
+      to <span class="mono-cell">{{ protection_root }}</span>
     </div>
     {{ checkbox('protection_delete', 'Delete extras on the copy (--delete: exact replica)', s) }}
   </div>

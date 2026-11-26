@@ -26,20 +26,16 @@
 </div>
 
 <div class="controls">
-  {% set meta = {
-    'scan': ('Scan GitHub', 'Discover repositories and enrol new ones.'),
-    'pull': ('Pull mirrors', 'git --mirror every enabled repo to the NAS.'),
-    'protection': ('Protection copy', 'rsync the mirror share to the second share.')
-  } %}
-  {% for jt in ['scan', 'pull', 'protection'] %}
+  {% for spec in job_specs %}
+  {% set jt = spec.key %}
   <div class="job-control">
-    <div class="name">{{ meta[jt][0] }}</div>
-    <div class="next">next · {{ next_runs[jt] or 'not scheduled' }}</div>
+    <div class="name">{{ spec.label }}</div>
+    <div class="next">next · {{ next_runs[jt] or 'manual only' }}</div>
     <form method="post" action="/run/{{ jt }}" hx-post="/run/{{ jt }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="primary">Run now</button>
     </form>
-    <div class="desc">{{ meta[jt][1] }}</div>
+    <div class="desc">{{ spec.description }}</div>
   </div>
   {% endfor %}
 </div>

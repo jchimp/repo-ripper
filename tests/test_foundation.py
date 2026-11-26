@@ -134,3 +134,18 @@ def test_failed_migration_rolls_back(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert "t" not in tables
     assert conn.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 0
     conn.close()
+
+
+def test_job_registry_drives_dashboard_and_settings(authed: tuple[TestClient, str]) -> None:
+    from app import jobs, scheduler
+    client, token = authed
+    dash = client.get("/").text
+    settings_html = client.get("/settings").text
+    for spec in jobs.JOBS.values():
+        assert spec.label in dash
+        assert f'name="{spec.schedule_key}"' in settings_html
+    # An empty schedule removes the job from the scheduler: manual only.
+    client.post("/settings", data={"csrf_token": token, "schedule_scan": ""})
+    assert scheduler.next_runs()["scan"] is None
+    client.post("/settings", data={"csrf_token": token, "schedule_scan": "0 4 * * *"})
+    assert scheduler.next_runs()["scan"] is not None

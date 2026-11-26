@@ -11,7 +11,7 @@ import base64
 import subprocess
 from pathlib import Path
 
-from .config import get_settings
+from . import runtime
 
 
 def _auth_header(token: str) -> str:
@@ -36,9 +36,8 @@ def _dir_size(path: Path) -> int | None:
 def mirror_repo(full_name: str, *, fetch_lfs: bool, include_wiki: bool,
                 has_wiki: bool) -> tuple[bool, str, int | None]:
     """Clone or update one mirror. Returns (ok, message, size_bytes)."""
-    s = get_settings()
-    header = _auth_header(s.github_token)
-    dest = Path(s.mirror_root) / f"{full_name}.git"
+    header = _auth_header(runtime.github_token())
+    dest = runtime.mirror_root() / f"{full_name}.git"
     clone_url = f"https://github.com/{full_name}.git"
 
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -69,8 +68,7 @@ def mirror_repo(full_name: str, *, fetch_lfs: bool, include_wiki: bool,
 
 
 def _mirror_wiki(full_name: str, header: str) -> bool:
-    s = get_settings()
-    dest = Path(s.mirror_root) / f"{full_name}.wiki.git"
+    dest = runtime.mirror_root() / f"{full_name}.wiki.git"
     url = f"https://github.com/{full_name}.wiki.git"
     git = ["git", "-c", header]
     if (dest / "HEAD").exists():
