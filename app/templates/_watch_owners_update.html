@@ -1,0 +1,6 @@
+{# Answer to "add owner" / "remove owner": the new list, plus the result
+   message for the live region below the form (HTMX out-of-band swap). #}
+{% include "_watch_owners.html" %}
+<div id="watch-owners-result" hx-swap-oob="innerHTML">
+  <span class="watch-msg {{ 'ok' if ok else 'err' }}">{{ message }}</span>
+</div>

@@ -1,0 +1,18 @@
+{# "Stop watching" for one watched row `r`. The <details> is the confirmation
+   step: it shows what happens before the button that does it. #}
+{% set ws = watch_stop_info(r) %}
+<details class="watch-stop">
+  <summary>Stop watching</summary>
+  <div class="watch-stop-body">
+    <p>This removes {{ r.full_name }} from the list. It does not delete the mirror.
+      The mirror files stay in <code>{{ ws.path }}</code>. You can delete them by hand.</p>
+    {% if ws.owner_watched %}
+    <p>{{ ws.owner }} is a watched owner. The next scan job adds this repository again.
+      To prevent this, turn off the backup switch of this repository, or remove
+      {{ ws.owner }} from the watched owners.</p>
+    {% endif %}
+    <button type="button" class="watch-small"
+            hx-post="/watch/repos/{{ r.id }}/stop"
+            hx-target="closest tr" hx-swap="delete">Stop watching {{ r.full_name }}</button>
+  </div>
+</details>

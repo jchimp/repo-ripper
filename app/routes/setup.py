@@ -9,7 +9,6 @@ import time
 from dataclasses import asdict
 from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -124,14 +123,11 @@ def _load_listing(refresh: bool = False) -> tuple[list[dict], str]:
             return cached[1], ""
     try:
         repos = github.list_all_repos(include_forks=True, include_archived=True)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 401:
-            return [], f"{github.MSG_REJECTED} Go back to step 2 and enter a new token."
-        return [], f"GitHub answered with HTTP {exc.response.status_code}. Try again later."
-    except httpx.HTTPError:
-        return [], github.MSG_NETWORK
-    except RuntimeError as exc:
-        return [], f"{exc}."
+    except github.TokenRejected:
+        return [], f"{github.MSG_REJECTED} Go back to step 2 and enter a new token."
+    except github.GitHubError as exc:
+        # The text of a GitHubError is written for the user and holds no secret.
+        return [], str(exc)
     with _list_lock:
         _list_cache.clear()
         _list_cache[key] = (time.time(), repos)

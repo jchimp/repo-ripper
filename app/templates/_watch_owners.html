@@ -1,0 +1,31 @@
+{# The list of watched owners. Needs `owners`. Replaced as one block by HTMX. #}
+<div id="watch-owners-list">
+  {% if owners %}
+  <ul class="watch-owner-list">
+    {% for o in owners %}
+    <li>
+      <span class="repo-name">{{ o.login }}</span>
+      <span class="tag">{{ 'organisation' if o.kind == 'org' else 'user' }}</span>
+      {% if o.include_forks %}<span class="tag">with forks</span>{% endif %}
+      {% if o.include_archived %}<span class="tag">with archived</span>{% endif %}
+      <span class="watch-owner-state">
+        {% if o.last_error %}
+          <span class="watch-msg err">Last scan failed: {{ o.last_error }}</span>
+        {% elif o.last_scan_at %}
+          Last scan {{ o.last_scan_at | fmt_time }}
+        {% else %}
+          No scan yet
+        {% endif %}
+      </span>
+      <button type="button" class="ghost watch-small"
+              hx-post="/watch/owners/{{ o.id }}/remove"
+              hx-target="#watch-owners-list" hx-swap="outerHTML"
+              hx-confirm="Remove {{ o.login }} from the watched owners? The scan job will not look for new repositories of {{ o.login }}. The repositories that are in the list stay there."
+              aria-label="Remove {{ o.login }} from the watched owners">Remove</button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="watch-none">No watched owners.</p>
+  {% endif %}
+</div>

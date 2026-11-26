@@ -5,7 +5,8 @@ history and no depth limit. Subsequent runs use `git remote update --prune` to
 stay in lockstep with GitHub, including deletions.
 
 The token is passed per-command via `http.extraHeader` so it never lands in the
-mirror's persisted config on the NAS.
+mirror's persisted config on the NAS. With no token, git runs with no auth
+header: that is sufficient for public repositories.
 """
 import base64
 import subprocess
@@ -13,10 +14,26 @@ from pathlib import Path
 
 from . import runtime
 
+# Where the clone URLs start. Tests point this at a folder of local bare
+# repositories, so that a real clone runs without the network.
+GIT_BASE_URL = "https://github.com"
+
 
 def _auth_header(token: str) -> str:
     raw = base64.b64encode(f"x-access-token:{token}".encode()).decode()
     return f"http.extraHeader=Authorization: Basic {raw}"
+
+
+def _git_base(token: str) -> list[str]:
+    """Start of every git command. No auth header when the token is empty:
+    an empty or wrong credential makes GitHub refuse a public repository."""
+    if not token:
+        return ["git"]
+    return ["git", "-c", _auth_header(token)]
+
+
+def _clone_url(full_name: str, wiki: bool = False) -> str:
+    return f"{GIT_BASE_URL}/{full_name}{'.wiki' if wiki else ''}.git"
 
 
 def _run(cmd: list[str], timeout: int = 3600) -> subprocess.CompletedProcess:
@@ -36,12 +53,11 @@ def _dir_size(path: Path) -> int | None:
 def mirror_repo(full_name: str, *, fetch_lfs: bool, include_wiki: bool,
                 has_wiki: bool) -> tuple[bool, str, int | None]:
     """Clone or update one mirror. Returns (ok, message, size_bytes)."""
-    header = _auth_header(runtime.github_token())
+    git = _git_base(runtime.github_token())
     dest = runtime.mirror_root() / f"{full_name}.git"
-    clone_url = f"https://github.com/{full_name}.git"
+    clone_url = _clone_url(full_name)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    git = ["git", "-c", header]
 
     if (dest / "HEAD").exists():
         res = _run(git + ["-C", str(dest), "remote", "update", "--prune"])
@@ -61,16 +77,15 @@ def mirror_repo(full_name: str, *, fetch_lfs: bool, include_wiki: bool,
             notes.append("lfs skipped")
 
     if include_wiki and has_wiki:
-        wiki_ok = _mirror_wiki(full_name, header)
+        wiki_ok = _mirror_wiki(full_name, git)
         notes.append("wiki ok" if wiki_ok else "wiki absent")
 
     return True, ", ".join(notes), _dir_size(dest)
 
 
-def _mirror_wiki(full_name: str, header: str) -> bool:
+def _mirror_wiki(full_name: str, git: list[str]) -> bool:
     dest = runtime.mirror_root() / f"{full_name}.wiki.git"
-    url = f"https://github.com/{full_name}.wiki.git"
-    git = ["git", "-c", header]
+    url = _clone_url(full_name, wiki=True)
     if (dest / "HEAD").exists():
         res = _run(git + ["-C", str(dest), "remote", "update", "--prune"])
     else:

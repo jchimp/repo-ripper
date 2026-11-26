@@ -1,0 +1,51 @@
+{# watched-repos: add a public repository, manage the watched owners. #}
+{% set watch_note = watch_notice(request) %}
+<div class="panel watch-panel">
+  <div class="panel-head"><h2>Watch a public repository</h2></div>
+  <div class="panel-body pad">
+    <form class="watch-form" method="post" action="/watch/repos"
+          hx-post="/watch/repos" hx-target="#watch-result" hx-swap="innerHTML">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="watch-repo">Repository name or URL</label>
+      <div class="watch-row">
+        <input type="text" id="watch-repo" name="repo" required
+               autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="owner/name or https://github.com/owner/name">
+        <button type="submit" class="primary">Add</button>
+      </div>
+    </form>
+    <div id="watch-result" class="watch-result" role="status" aria-live="polite">
+      {%- if watch_note %}<span class="watch-msg ok">{{ watch_note }}</span>{% endif -%}
+    </div>
+
+    <details class="watch-owners">
+      <summary>Watched owners</summary>
+      <p class="hint">Each scan job adds the public repositories of these users and
+        organisations. Metadata capture is off for the repositories that it adds.</p>
+      {% set owners = watch_owners() %}
+      {% include "_watch_owners.html" %}
+      <form class="watch-owner-form" method="post" action="/watch/owners"
+            hx-post="/watch/owners" hx-target="#watch-owners-list" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label for="watch-owner-login">User or organisation name</label>
+        <div class="watch-row">
+          <input type="text" id="watch-owner-login" name="login" required
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="octocat">
+          <button type="submit">Add owner</button>
+        </div>
+        <div class="watch-options">
+          <div class="check">
+            <input type="checkbox" id="watch-owner-forks" name="include_forks" value="1">
+            <label for="watch-owner-forks">Include forks</label>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="watch-owner-archived" name="include_archived" value="1">
+            <label for="watch-owner-archived">Include archived repositories</label>
+          </div>
+        </div>
+      </form>
+      <div id="watch-owners-result" class="watch-result" role="status" aria-live="polite"></div>
+    </details>
+  </div>
+</div>

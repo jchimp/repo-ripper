@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from . import db, github, mirror, notify, protection, setup_state
+from . import db, github, mirror, notify, protection, runtime, setup_state, watch
 
 # One lock per job key, created on first use.
 _LOCKS: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)
@@ -28,33 +28,82 @@ def run_scan_job() -> None:
         jid = db.start_job("scan")
         # Keeps the token-health banner on the dashboard current. Never raises.
         setup_state.refresh_token_check()
-        try:
-            repos = github.list_all_repos(
-                include_forks=db.get_bool("include_forks"),
-                include_archived=db.get_bool("include_archived"),
-            )
-        except Exception as exc:
-            summary = f"Discovery failed: {exc}"
-            db.finish_job(jid, "error", 0, 1, summary, str(exc))
-            notify.notify_job("scan", False, summary)
-            return
+        # The scan has independent parts: the token's own list, then each
+        # watched owner. A failed part does not stop the other parts.
+        found = added = parts_ok = parts_failed = 0
+        notes: list[str] = []
+        lines: list[str] = []
 
-        now = time.time()
-        # Applies to NEW rows only: a known repository keeps its switch.
-        auto_enable = db.get_bool("auto_enable_new", True)
-        for r in repos:
-            db.upsert_repo({
-                "full_name": r["full_name"],
-                "private": r["private"],
-                "fork": r["fork"],
-                "archived": r["archived"],
-                "default_branch": r["default_branch"],
-                "mirror_path": f"{r['full_name']}.git",
-                "discovered_at": now,
-            }, enabled=auto_enable)
-        summary = f"Discovered {len(repos)} repositories"
-        db.finish_job(jid, "ok", len(repos), 0, summary, "")
-        notify.notify_job("scan", True, summary)
+        if not runtime.github_token():
+            notes.append("My repositories: skipped, because no GitHub token is set.")
+            lines.append("[skipped] my repositories — no GitHub token is set")
+        else:
+            try:
+                repos = github.list_all_repos(
+                    include_forks=db.get_bool("include_forks"),
+                    include_archived=db.get_bool("include_archived"),
+                )
+            except Exception as exc:
+                parts_failed += 1
+                notes.append(f"My repositories: failed ({exc})")
+                lines.append(f"[error] my repositories — {exc}")
+            else:
+                now = time.time()
+                new = 0
+                # Applies to NEW rows only: a known repository keeps its switch.
+                auto_enable = db.get_bool("auto_enable_new", True)
+                for r in repos:
+                    new += db.upsert_repo({
+                        "full_name": r["full_name"],
+                        "private": r["private"],
+                        "fork": r["fork"],
+                        "archived": r["archived"],
+                        "default_branch": r["default_branch"],
+                        "mirror_path": f"{r['full_name']}.git",
+                        "discovered_at": now,
+                        "source": "mine",
+                    }, enabled=auto_enable)
+                parts_ok += 1
+                found += len(repos)
+                added += new
+                lines.append(f"[ok] my repositories — {len(repos)} found, {new} new")
+
+        owners_failed = 0
+        rate_limited: github.RateLimited | None = None
+        for owner in db.list_watch_owners():
+            label = f"watched owner {owner['login']}"
+            try:
+                # After a rate-limit answer each more call fails the same
+                # way and uses up nothing but time.
+                if rate_limited:
+                    raise rate_limited
+                o_found, o_new = watch.discover_owner(owner)
+            except github.RateLimited as exc:
+                rate_limited = exc
+                error = str(exc)
+            except github.GitHubError as exc:
+                error = str(exc)
+            else:
+                db.record_watch_owner_scan(owner["id"], None)
+                parts_ok += 1
+                found += o_found
+                added += o_new
+                lines.append(f"[ok] {label} — {o_found} found, {o_new} new")
+                continue
+            db.record_watch_owner_scan(owner["id"], error)
+            parts_failed += 1
+            owners_failed += 1
+            lines.append(f"[error] {label} — {error}")
+        if owners_failed:
+            notes.append(f"Watched owners that failed: {owners_failed}.")
+
+        if parts_failed == 0:
+            status = "ok"
+        else:
+            status = "partial" if parts_ok else "error"
+        summary = " ".join([f"Discovered {found} repositories ({added} new).", *notes])
+        db.finish_job(jid, status, found, parts_failed, summary, "\n".join(lines))
+        notify.notify_job("scan", parts_failed == 0, summary)
     finally:
         lock.release()
 

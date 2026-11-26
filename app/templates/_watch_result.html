@@ -1,0 +1,5 @@
+{# Result message of a watch action. With `oob` it goes into the panel's
+   live region from any request (HTMX out-of-band swap). #}
+{% if oob %}<div id="watch-result" hx-swap-oob="innerHTML">{% endif %}
+<span class="watch-msg {{ 'ok' if ok else 'err' }}">{{ message }}</span>
+{% if oob %}</div>{% endif %}
