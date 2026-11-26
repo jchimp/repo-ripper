@@ -102,7 +102,7 @@ Do one of these:
   folders below `/mnt/nas` that hold your mirrors and your protection copy.
   The app finds the mirrors that are there and updates them.
 
-## The three jobs
+## The jobs
 
 - **Scan** — lists repos via the GitHub API and enrols new ones. Honours the
   fork/archived toggles.
@@ -110,6 +110,8 @@ Do one of these:
   --prune` thereafter, for every *enabled* repo. Best-effort LFS and wiki.
 - **Protection copy** — `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`,
   optionally `--delete` for an exact replica.
+- **Capture metadata**: downloads pull requests, issues, comments and releases
+  from the GitHub API to JSON files next to each mirror. See [Metadata](#metadata).
 
 Each has its own cron schedule (Settings) and a **Run now** button (Dashboard).
 
@@ -166,6 +168,77 @@ If `SECRET_KEY` changes, the stored token cannot be read: enter the token
 again. A `GITHUB_TOKEN` value in `.env` is used only when no token is stored.
 Each scan checks the token. The dashboard shows a notice when GitHub rejects
 the token or when the token expires in less than 14 days.
+
+## Metadata
+
+A git mirror holds the code and the history. It does not hold pull request
+conversations, issues or releases, because GitHub keeps these outside git. The
+job **Capture metadata** downloads them from the GitHub API.
+
+What the job captures for each repository:
+
+- Pull requests: the pull request, its conversation comments, its review
+  comments (comments on diff lines), its reviews, and its commit list.
+- Issues and their comments.
+- Labels, milestones, and releases. For a release asset the job stores the
+  name, size and URL. It does not download the asset file.
+- The GitHub repository object (description, topics, default branch).
+
+Where the data is stored: in plain JSON files in a folder next to the mirror.
+You can read the files without repo-ripper. The protection copy includes them.
+
+```
+<MIRROR_ROOT>/<owner>/<name>.git/     the git mirror
+<MIRROR_ROOT>/<owner>/<name>.meta/
+    README.txt                        what the folder is, format version
+    repo.json  labels.json  milestones.json  releases.json
+    issues/<number>.json              {"issue", "comments", "fetched_at"}
+    pulls/<number>.json               {"pull", "comments", "review_comments",
+                                       "reviews", "commits", "fetched_at"}
+    index.json                        compact list of all issues and pull requests
+    state.json                        sync position, counts, result of the last run
+```
+
+The objects are stored as GitHub returns them. Text bodies are raw Markdown.
+
+How the job works:
+
+- The first run downloads everything. Each later run downloads only the issues
+  and pull requests that changed after the last run.
+- The job saves its position after each item. If a run stops, the next run
+  continues from that position.
+- An issue or pull request that is deleted on GitHub stays on disk.
+- The job runs each day at 04:00 by default. Change the schedule in Settings.
+- To stop the capture for all repositories, clear **Capture metadata from
+  GitHub** in Settings. To stop it for one repository, use the **Metadata**
+  switch on the Repositories page.
+
+Token permissions:
+
+- Fine-grained token: **Issues** read, **Pull requests** read, **Metadata**
+  read, **Contents** read.
+- Classic token: the `repo` scope.
+- With no token the job can read public repositories only.
+
+Rate limits:
+
+- GitHub permits 5,000 API requests in one hour with a token, and 60 requests
+  in one hour with no token.
+- A pull request costs 2 to 5 requests or more. An issue costs 0 to 1 request
+  or more. Thus the first run on a large repository can use the full limit.
+- When GitHub reports the limit, the job stops and does not send more
+  requests. The job result shows how many repositories are done and the time
+  at which the limit resets. The next run continues. A large repository can
+  need more than one run.
+
+The commits of pull requests are in the git mirror, not in the metadata.
+`git clone --mirror` uses the refspec `+refs/*:refs/*`, so the mirror includes
+GitHub's `refs/pull/<number>/head` refs. Thus the commits of each pull request
+are stored locally, also when the source fork is deleted. To get them:
+
+```bash
+git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git log refs/pull/<number>/head
+```
 
 ## NAS mounts and permissions
 
