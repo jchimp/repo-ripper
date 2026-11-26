@@ -5,8 +5,8 @@ Mirrors every GitHub repository your token can see to a NAS folder as bare
 for protection, and gives you a small authenticated UI with schedules, per-repo
 status, and optional Telegram notifications.
 
-Point a local git UI (Forgejo, klaus, cgit, lazygit) at `MIRROR_ROOT` when you
-want visual diffs and history — repo-ripper handles the capture, not the viewer.
+The UI also has a read-only browser for the mirrored code, the history and the
+captured pull requests and issues. See [Browse](#browse).
 
 ## Stack
 
@@ -271,6 +271,29 @@ are stored locally, also when the source fork is deleted. To get them:
 ```bash
 git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git log refs/pull/<number>/head
 ```
+
+## Browse
+
+repo-ripper has a read-only browser for each repository. Select **Browse** in a
+row of the Repositories page. It reads the mirror and the metadata folder on
+disk, so it works with no connection to GitHub.
+
+- **Code**: file tree for each branch, tag or commit, the rendered README,
+  files with syntax colours, raw download, and a text search.
+- **Commits**: history of a branch or a file, and each commit with its diff.
+- **Pull requests** and **Issues**: lists with filters, and the full
+  conversation. The changed files of a pull request are computed from the
+  local mirror.
+- **Releases** and, when it is mirrored, the **Wiki**.
+
+The browser cannot change a repository, and it is not a git server. To clone
+from a mirror, to restore a repository to GitHub, to add a second viewer
+(cgit), or to learn what Forgejo can and cannot do with these mirrors, read
+[docs/HOSTING.md](docs/HOSTING.md).
+
+Text from a repository or from GitHub is not trusted: Markdown is rendered
+with raw HTML off, remote images are not loaded, and the raw file route sends
+HTML and SVG files as plain text.
 
 ## NAS mounts and permissions
 
