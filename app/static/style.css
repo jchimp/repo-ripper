@@ -428,8 +428,7 @@ select:focus-visible, input[type=checkbox]:focus-visible {
   .kv dd { margin-bottom: 8px; }
   .picker-actions { align-items: stretch; flex-direction: column; }
   .repo-scroll th:nth-child(3), .repo-scroll td:nth-child(3) { display: none; }
-/* === watched-repos ========================================================
-   Watch panel on the Repositories page, the `watched` tag and the
+/* === watched-repos =================================================   Watch panel on the Repositories page, the `watched` tag and the
    "Stop watching" confirmation in a repository row. */
 
 .watch-panel { margin-top: 20px; }
@@ -491,4 +490,249 @@ button.watch-small { font-size: 12px; padding: 4px 10px; }
 @media (max-width: 760px) {
   .meta-cell { white-space: normal; }
   .meta-counts { display: block; margin: 4px 0 0; }
+=======
+/* ==========================================================================
+   sync-engine — dashboard health and live progress, repository list filters,
+   repository page, job page, size chart. Colours: CSS variables only.
+   ========================================================================== */
+
+.muted { color: var(--muted); }
+.top-gap { margin-top: 20px; }
+.h-sub { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.card .v.v-small { font-size: 16px; }
+.count {
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 0 8px;
+}
+.hint-inline { font-size: 12px; color: var(--muted); }
+.panel-foot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 13px; }
+.table-scroll { overflow-x: auto; }
+th.num { text-align: right; }
+.msg-cell {
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  white-space: pre-wrap; word-break: break-word; max-width: 460px;
+}
+.empty p { margin: 0 0 14px; }
+time { white-space: nowrap; }
+
+.page-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-head h1 { margin: 0; }
+.page-head form { margin: 0; }
+.repo-title { font-family: var(--mono); font-size: 20px; word-break: break-all; }
+.tag-row { margin: -6px 0 20px; }
+.tag-row .tag:first-child { margin-left: 0; }
+
+/* --- status: pills and tags ------------------------------------------------ */
+
+/* The base rule for .pill.error has the size of a message box. Give it the
+   size of the other pills. */
+.pill.error {
+  color: var(--fail);
+  background: color-mix(in srgb, var(--fail) 10%, transparent);
+  border-color: color-mix(in srgb, var(--fail) 30%, transparent);
+  font-size: 12px; padding: 2px 9px; border-radius: 999px; margin-bottom: 0;
+}
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.pill.interrupted { color: var(--muted); background: transparent; border-color: var(--muted); border-style: dashed; }
+.pill { white-space: nowrap; }
+
+.tag { white-space: nowrap; }
+.tag.tag-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.tag.tag-fail { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 45%, transparent); }
+a.repo-name { color: var(--text); }
+a.repo-name:hover { color: var(--accent); }
+
+/* --- buttons and inputs ---------------------------------------------------- */
+
+button.small, .btn.small { font-size: 12px; padding: 4px 10px; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--line); }
+button.primary:disabled:hover { background: var(--accent-d); border-color: var(--accent-d); }
+a.btn { display: inline-block; text-decoration: none; }
+a.btn.ghost { background: transparent; }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+input[type=search], input[type=number], select {
+  padding: 8px 10px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: 6px;
+  font-family: var(--mono); font-size: 13px;
+}
+input[type=search] { width: 100%; }
+input[type=number] { width: 90px; }
+input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+input[readonly] { color: var(--muted); }
+
+/* --- messages -------------------------------------------------------------- */
+
+.flash, .notice {
+  font-size: 13px; padding: 10px 14px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel-2);
+}
+.notice { margin-bottom: 20px; line-height: 1.6; }
+.notice code { font-family: var(--mono); font-size: 12px; }
+.panel > .flash { border-radius: 0; border-width: 0 0 1px; }
+.page-head + .flash, .tag-row + .flash, main > .flash { margin-bottom: 20px; }
+.flash.warn, .notice.warn {
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+.notice.fail {
+  background: color-mix(in srgb, var(--fail) 10%, transparent);
+  border-color: color-mix(in srgb, var(--fail) 35%, transparent);
+}
+.notice.run {
+  background: color-mix(in srgb, var(--run) 10%, transparent);
+  border-color: color-mix(in srgb, var(--run) 35%, transparent);
+}
+.notice .pill { margin-right: 8px; }
+
+/* --- dashboard: health line ------------------------------------------------ */
+
+.health {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 20px 0; padding: 12px 16px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--muted); border-radius: var(--radius);
+}
+.health-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.health-main { font-weight: 600; }
+.health-sub { color: var(--muted); font-size: 13px; }
+.health.good { border-left-color: var(--ok); }
+.health.good .health-dot { background: var(--ok); }
+.health.attn { border-left-color: var(--warn); }
+.health.attn .health-dot { background: var(--warn); }
+.health.bad { border-left-color: var(--fail); }
+.health.bad .health-dot { background: var(--fail); }
+.health-items { display: flex; gap: 8px; flex-wrap: wrap; }
+.health-items a {
+  font-size: 13px; color: var(--text);
+  padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel-2);
+}
+.health-items a:hover { text-decoration: none; border-color: var(--accent-d); }
+.health-items b { font-family: var(--mono); }
+.health-items .h-fail b { color: var(--fail); }
+.health-items .h-warn b { color: var(--warn); }
+.health-items .h-muted b { color: var(--muted); }
+
+/* --- live progress --------------------------------------------------------- */
+
+.live-panel { border-color: color-mix(in srgb, var(--run) 45%, var(--line)); }
+.live-job + .live-job { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.live-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.live-title { font-weight: 600; }
+.live-elapsed { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+.bar {
+  height: 8px; margin: 12px 0 10px; border-radius: 999px; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--line);
+}
+.bar > span {
+  display: block; height: 100%; min-width: 2px; border-radius: 999px;
+  background: var(--accent); transition: width 0.4s ease;
+}
+.bar.indeterminate > span { width: 30%; background: var(--run); animation: bar-slide 1.6s ease-in-out infinite; }
+@keyframes bar-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(340%); }
+}
+
+.live-counts { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.live-counts b { font-family: var(--mono); color: var(--text); }
+.live-counts .c-ok b { color: var(--ok); }
+.live-counts .c-warn b { color: var(--warn); }
+.live-counts .c-fail b { color: var(--fail); }
+
+.live-now { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; }
+.live-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.chip {
+  font-family: var(--mono); font-size: 12px; color: var(--run);
+  padding: 2px 8px; border-radius: 4px;
+  background: color-mix(in srgb, var(--run) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--run) 30%, transparent);
+}
+.live-log { margin-top: 12px; max-height: 168px; }
+.live-log.full { max-height: 480px; }
+
+/* --- dashboard: attention list and chart ----------------------------------- */
+
+.dash-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.dash-cols > .panel { min-width: 0; }
+.attn-list { list-style: none; margin: 0; padding: 0; }
+.attn-list li {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--line);
+}
+.attn-list li:last-child { border-bottom: none; }
+.attn-text { flex-basis: 100%; font-size: 12px; color: var(--muted); word-break: break-word; }
+.attn-text:empty { display: none; }
+
+.chart { display: block; overflow: visible; }
+.chart-rule { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart-base { stroke: var(--muted); stroke-width: 1; }
+.chart-label {
+  font-family: var(--mono); font-size: 11px; fill: var(--muted);
+  /* A ring in the panel colour keeps a label legible where the line crosses it. */
+  stroke: var(--panel); stroke-width: 4px; paint-order: stroke; stroke-linejoin: round;
+}
+.chart-line {
+  fill: none; stroke: var(--accent); stroke-width: 2;
+  stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
+}
+.chart-area { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: none; }
+.chart-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.chart-hit { fill: var(--accent); fill-opacity: 0; }
+.chart-pt:hover .chart-hit { fill-opacity: 0.2; }
+.chart-empty { padding: 48px 16px; }
+
+/* --- repository list: filters and bulk actions ----------------------------- */
+
+.filters {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+  padding: 14px 16px; margin-bottom: 16px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.filter label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.filter.grow { flex: 1 1 200px; }
+.filter.end { display: flex; gap: 8px; margin-left: auto; }
+
+.list-head { flex-wrap: wrap; }
+.bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.bulk-label { font-size: 12px; color: var(--muted); }
+th.sel, td.sel { width: 36px; padding-right: 0; }
+td.sel input, th.sel input { display: block; }
+.row-actions { white-space: nowrap; text-align: right; }
+.row-note { white-space: normal; text-align: left; font-size: 12px; color: var(--warn); margin-top: 6px; max-width: 260px; }
+
+/* --- repository page ------------------------------------------------------- */
+
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 24px; margin: 0 0 20px; }
+.facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.facts dd { margin: 4px 0 0; font-family: var(--mono); font-size: 14px; }
+.copy-field { margin-top: 14px; }
+.copy-row { display: flex; gap: 8px; }
+.copy-row input { flex: 1; min-width: 0; }
+.copy-row button { flex: none; min-width: 104px; }
+
+/* Links that a later feature adds on the repository page. */
+.repo-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar > span { transition: none; }
+  .bar.indeterminate > span { animation: none; width: 100%; opacity: 0.5; }
+}
+
+@media (max-width: 760px) {
+  .dash-cols { grid-template-columns: 1fr; }
+  .facts { grid-template-columns: 1fr 1fr; }
+  .filter { flex: 1 1 130px; }
+  .filter select { width: 100%; }
+  .filter.end { margin-left: 0; }
+  .col-size, .col-sync { display: none; }
+  .bulk-label { flex-basis: 100%; }
+  th, td { padding-left: 10px; padding-right: 10px; }
+  .msg-cell { min-width: 200px; }
+  .copy-row { flex-wrap: wrap; }
+  .copy-row input { flex-basis: 100%; }
 }

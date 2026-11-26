@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
             log.error("Refusing to start: %s. Edit .env (see .env.example).", p)
         raise RuntimeError("Insecure configuration: " + "; ".join(problems))
     db.init_db()
+    db.mark_interrupted_jobs()  # before scheduler.start(): no job runs yet
     auth.init_auth()
     scheduler.start()
     yield

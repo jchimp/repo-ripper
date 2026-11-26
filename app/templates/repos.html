@@ -1,35 +1,90 @@
 {% extends "base.html" %}
 {% set active = "repos" %}
+{% macro option(value, label, current) %}
+<option value="{{ value }}"{{ ' selected' if current == value }}>{{ label }}</option>
+{% endmacro %}
 {% block content %}
 <div class="eyebrow">Inventory</div>
-<h1>Repositories</h1>
+<div class="page-head">
+  <h1>Repositories</h1>
+  <span class="spacer"></span>
+  <form method="post" action="/run/scan" hx-post="/run/scan">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="ghost">Rescan GitHub</button>
+  </form>
+</div>
 
 {% include "_watch_panel.html" %}
 
-<div class="panel" style="margin-top:20px">
-  <div class="panel-head">
-    <h2>{{ repos | length }} discovered</h2>
-    <span class="spacer"></span>
-    <form method="post" action="/run/scan" hx-post="/run/scan">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="ghost">Rescan GitHub</button>
-    </form>
+<form id="repo-filters" class="filters" method="get" action="/repos" role="search"
+      hx-get="/repos" hx-target="#repo-list" hx-swap="outerHTML"
+      hx-trigger="input changed delay:250ms, change" hx-push-url="true">
+  <div class="filter grow">
+    <label for="f-q">Search</label>
+    <input type="search" id="f-q" name="q" value="{{ f.q }}" placeholder="Name contains"
+           autocomplete="off" spellcheck="false">
   </div>
-  <div class="panel-body">
-    {% if repos %}
-    <table>
-      <thead>
-        <tr><th>Repository</th><th>Last sync</th><th>Status</th><th class="num">Size</th><th>Metadata</th><th>Backup</th></tr>
-      </thead>
-      <tbody>
-        {% for r in repos %}
-          {% include "_repo_row.html" %}
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">Nothing discovered yet. Run a scan to enrol your GitHub repositories.</div>
-    {% endif %}
+  <div class="filter">
+    <label for="f-status">Status</label>
+    <select id="f-status" name="status">
+      {{ option('', 'All', f.status) }}
+      {{ option('ok', 'ok', f.status) }}
+      {{ option('warn', 'warn', f.status) }}
+      {{ option('error', 'error', f.status) }}
+      {{ option('pending', 'pending', f.status) }}
+      {{ option('running', 'running', f.status) }}
+    </select>
   </div>
-</div>
+  <div class="filter">
+    <label for="f-visibility">Visibility</label>
+    <select id="f-visibility" name="visibility">
+      {{ option('', 'All', f.visibility) }}
+      {{ option('public', 'Public', f.visibility) }}
+      {{ option('private', 'Private', f.visibility) }}
+    </select>
+  </div>
+  <div class="filter">
+    <label for="f-source">Source</label>
+    <select id="f-source" name="source">
+      {{ option('', 'All', f.source) }}
+      {{ option('mine', 'Mine', f.source) }}
+      {{ option('watched', 'Watched', f.source) }}
+    </select>
+  </div>
+  <div class="filter">
+    <label for="f-backup">Backup</label>
+    <select id="f-backup" name="backup">
+      {{ option('', 'All', f.backup) }}
+      {{ option('on', 'On', f.backup) }}
+      {{ option('off', 'Off', f.backup) }}
+    </select>
+  </div>
+  <div class="filter">
+    <label for="f-flag">Problem</label>
+    <select id="f-flag" name="flag">
+      {{ option('', 'All', f.flag) }}
+      {{ option('gone', 'Gone upstream', f.flag) }}
+      {{ option('verify', 'Verify failed', f.flag) }}
+    </select>
+  </div>
+  <div class="filter">
+    <label for="f-sort">Sort</label>
+    <select id="f-sort" name="sort">
+      {{ option('name', 'Name, A to Z', f.sort) }}
+      {{ option('name_desc', 'Name, Z to A', f.sort) }}
+      {{ option('synced', 'Last sync, newest first', f.sort) }}
+      {{ option('synced_old', 'Last sync, oldest first', f.sort) }}
+      {{ option('size', 'Size, largest first', f.sort) }}
+      {{ option('size_small', 'Size, smallest first', f.sort) }}
+      {{ option('status', 'Status, problems first', f.sort) }}
+    </select>
+  </div>
+  <div class="filter end">
+    <noscript><button type="submit">Apply</button></noscript>
+    <a class="btn ghost" href="/repos">Clear</a>
+  </div>
+</form>
+
+{% include "_repo_list.html" %}
+<script src="/static/app.js" defer></script>
 {% endblock %}

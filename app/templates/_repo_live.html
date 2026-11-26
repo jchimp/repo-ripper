@@ -1,0 +1,8 @@
+{# Status block of the repository page. It polls only while the sync runs. #}
+<div id="repo-live"{% if status == 'running' %} class="notice run"
+     hx-get="/repos/{{ r.id }}/live" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if status == 'running' %}
+  <span class="pill running">running</span>
+  A sync of this repository is running. The page shows the result when it is done.
+  {% endif %}
+</div>

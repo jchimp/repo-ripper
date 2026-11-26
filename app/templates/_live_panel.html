@@ -1,0 +1,11 @@
+{# "Running now" on the dashboard. It polls only while a job runs: with no
+   job, the wrapper has no hx-trigger. #}
+<div id="live-panel"{% if live_jobs %} class="panel live-panel"
+     hx-get="/live" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if live_jobs %}
+  <div class="panel-head"><h2>Running now</h2></div>
+  <div class="panel-body pad">
+    {% for lj in live_jobs %}{% include "_live_job.html" %}{% endfor %}
+  </div>
+  {% endif %}
+</div>

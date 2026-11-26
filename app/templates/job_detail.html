@@ -2,16 +2,28 @@
 {% set active = "dashboard" %}
 {% block content %}
 <div class="eyebrow"><a href="/">Dashboard</a> / Job {{ job.id }}</div>
-<h1>{{ job.job_type }} run</h1>
+<h1>{{ job_label }} <span class="h-sub">run {{ job.id }}</span></h1>
 
-<div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:20px">
+{% if lj %}
+{# The inner element polls every 2 seconds while the job runs. #}
+<section class="live-region top-gap" aria-live="polite" aria-label="Job progress">
+  {% include "_job_live.html" %}
+</section>
+{% else %}
+<div class="grid stats top-gap">
   <div class="card">
     <div class="k">Status</div>
-    <div class="v" style="font-size:18px"><span class="pill {{ job.status }}">{{ job.status }}</span></div>
+    <div class="v v-small"><span class="pill {{ job.status }}">{{ job.status }}</span></div>
   </div>
   <div class="card">
     <div class="k">Started</div>
-    <div class="v" style="font-size:16px">{{ job.started_at | fmt_time }}</div>
+    <div class="v v-small">{{ job.started_at | ago }} <small>· {{ job.started_at | fmt_time }}</small></div>
+  </div>
+  <div class="card">
+    <div class="k">Duration</div>
+    <div class="v v-small">
+      {%- if job.finished_at -%}{{ (job.finished_at - job.started_at) | fmt_duration }}{%- else -%}—{%- endif -%}
+    </div>
   </div>
   <div class="card">
     <div class="k">OK / Failed</div>
@@ -24,6 +36,38 @@
   <div class="panel-body pad">{{ job.summary or '—' }}</div>
 </div>
 
+{% if results %}
+<div class="panel">
+  <div class="panel-head">
+    <h2>Repositories</h2>
+    <span class="count">{{ results | length }}</span>
+    <span class="spacer"></span>
+    <span class="hint-inline">The failed ones are first.</span>
+  </div>
+  <div class="panel-body table-scroll">
+    <table>
+      <thead>
+        <tr><th>Status</th><th>Repository</th><th>Action</th><th class="num">Duration</th><th>Message</th></tr>
+      </thead>
+      <tbody>
+        {% for row in results %}
+        <tr>
+          <td><span class="pill {{ row.status }}">{{ row.status }}</span></td>
+          <td>
+            {% if row.full_name %}<a class="repo-name" href="/repos/{{ row.repo_id }}">{{ row.full_name }}</a>
+            {% else %}<span class="muted">removed entry</span>{% endif %}
+          </td>
+          <td class="mono-cell">{{ row.action }}</td>
+          <td class="num">{{ row.duration | fmt_duration }}</td>
+          <td class="msg-cell">{{ row.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 {% if job.detail %}
 <div class="panel">
   <div class="panel-head"><h2>Log</h2></div>
@@ -31,5 +75,10 @@
     <div class="detail-log">{{ job.detail }}</div>
   </div>
 </div>
+{% elif job.status == 'interrupted' %}
+<div class="panel">
+  <div class="panel-body"><div class="empty">A restart stopped this job before it wrote a log. Run the job again.</div></div>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

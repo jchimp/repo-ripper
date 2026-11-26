@@ -1,0 +1,61 @@
+{# The repository table with its counts and bulk actions. The filter form, the
+   bulk actions and the 2-second poll (only while a job runs) all replace this
+   element. #}
+<div id="repo-list" class="panel"
+     hx-get="/repos{{ '?' ~ query if query }}" hx-target="this" hx-swap="outerHTML"
+     hx-trigger="repo-sync-started from:body{{ ', every 2s' if polling }}">
+  <div class="panel-head list-head">
+    <h2>{{ repos | length }} shown of {{ total }}</h2>
+    {% if polling %}<span class="pill running">job running</span>{% endif %}
+    <span class="spacer"></span>
+    {% if repos %}
+    <form id="bulk-form" class="bulk" method="post" action="/repos/bulk">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <span class="bulk-label">Checked rows<span data-selected-count></span>:</span>
+      {% for action, label in (('enable', 'Backup on'), ('disable', 'Backup off'), ('sync', 'Sync now')) %}
+      <button type="submit" name="action" value="{{ action }}" class="ghost small"
+              hx-post="/repos/bulk" hx-vals='{"action": "{{ action }}"}'
+              hx-include="[name='ids']:checked, #repo-filters"
+              hx-target="#repo-list" hx-swap="outerHTML">{{ label }}</button>
+      {% endfor %}
+    </form>
+    {% endif %}
+  </div>
+  {% if message %}<div class="flash {{ message_kind }}" role="status">{{ message }}</div>{% endif %}
+  <div class="panel-body table-scroll">
+    {% if repos %}
+    <table class="repo-table">
+      <thead>
+        <tr>
+          <th class="sel"><input type="checkbox" data-select-all aria-label="Select all rows"></th>
+          <th>Repository</th>
+          <th class="col-sync">Last sync</th>
+          <th>Status</th>
+          <th class="num col-size">Size</th>
+          <th>Metadata</th>
+          <th>Backup</th>
+          <th class="row-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in repos %}
+          {% include "_repo_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif total == 0 %}
+    <div class="empty">
+      <p>No repositories yet. Run a scan to find the repositories of your GitHub account.</p>
+      <form method="post" action="/run/scan" hx-post="/run/scan">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="primary">Scan GitHub</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="empty">
+      <p>No repository matches these filters.</p>
+      <a class="btn" href="/repos">Clear the filters</a>
+    </div>
+    {% endif %}
+  </div>
+</div>

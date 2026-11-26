@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% set active = "repos" %}
+{% block title %}{{ r.full_name }} — repo-ripper{% endblock %}
+{% block content %}
+<div class="eyebrow"><a href="/repos">Repositories</a> / {{ r.full_name }}</div>
+<div class="page-head">
+  <h1 class="repo-title">{{ r.full_name }}</h1>
+  <span class="pill {{ 'skipped' if status == 'pending' else status }}">{{ status }}</span>
+  <span class="spacer"></span>
+  <form method="post" action="/repos/{{ r.id }}/sync">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="detail">
+    <button type="submit" class="primary" {{ 'disabled' if status == 'running' }}>Sync now</button>
+  </form>
+  <form method="post" action="/repos/{{ r.id }}/toggle">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="detail">
+    <button type="submit">{{ 'Turn backup off' if r.enabled else 'Turn backup on' }}</button>
+  </form>
+</div>
+<div class="tag-row">
+  <span class="tag">{{ 'private' if r.private else 'public' }}</span>
+  {% if r.fork %}<span class="tag">fork</span>{% endif %}
+  {% if r.archived %}<span class="tag">archived</span>{% endif %}
+  <span class="tag">{{ r.source }}</span>
+  <span class="tag {{ '' if r.enabled else 'tag-warn' }}">backup {{ 'on' if r.enabled else 'off' }}</span>
+  {% if r.upstream_state == 'gone' %}<span class="tag tag-warn">gone upstream</span>{% endif %}
+  {% if r.last_verify_status == 'error' %}<span class="tag tag-fail">verify failed</span>{% endif %}
+</div>
+
+{# === repository tabs: a later feature adds _repo_tabs.html with the links
+   "Code / Commits / Pull requests / Issues". No file, no output. === #}
+{% include "_repo_tabs.html" ignore missing %}
+
+{% if flash %}<div class="flash warn" role="status">{{ flash }}</div>{% endif %}
+
+{# The inner element polls every 2 seconds, only while this repository syncs. #}
+<section class="live-region" aria-live="polite" aria-label="Sync state">
+  {% include "_repo_live.html" %}
+</section>
+
+{% if r.upstream_state == 'gone' %}
+<div class="notice warn">
+  <strong>Gone upstream.</strong>
+  GitHub does not list this repository{% if r.gone_since %} since {{ r.gone_since | fmt_time }}{% endif %}.
+  It was deleted, or the token can no longer see it. The mirror on disk is kept and the pull job
+  skips it. If the repository comes back, the next scan clears this state.
+</div>
+{% endif %}
+{% if r.last_verify_status == 'error' %}
+<div class="notice fail">
+  <strong>Verification failed.</strong>
+  <code>git fsck</code> found a problem in the mirror ({{ r.last_verify_at | ago }}). Read the
+  message in the history below. If GitHub still has the repository, move the mirror folder away
+  and select "Sync now" to make a new mirror.
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Facts</h2></div>
+  <div class="panel-body pad">
+    <dl class="facts">
+      <div><dt>Default branch</dt><dd>{{ r.default_branch or '—' }}</dd></div>
+      <div><dt>Size on disk</dt><dd>{{ r.size_bytes | fmt_size }}</dd></div>
+      <div><dt>First seen</dt><dd>{{ r.discovered_at | ago }}</dd></div>
+      <div><dt>Last sync</dt><dd>{{ r.last_sync_at | ago }}</dd></div>
+      <div><dt>Last good sync</dt><dd>{{ r.last_ok_at | ago }}</dd></div>
+      <div><dt>Last verify</dt>
+        <dd>{% if r.last_verify_at %}<span class="pill {{ r.last_verify_status }}">{{ r.last_verify_status }}</span> {{ r.last_verify_at | ago }}
+            {% else %}<span class="muted">never</span>{% endif %}</dd></div>
+    </dl>
+
+    <div class="copy-field">
+      <label for="mirror-path">Mirror folder (as the app sees it)</label>
+      <div class="copy-row">
+        <input type="text" id="mirror-path" readonly value="{{ mirror_path }}">
+        <button type="button" data-copy="#mirror-path">Copy</button>
+      </div>
+    </div>
+    {% if mirror_exists %}
+    <div class="copy-field">
+      <label for="restore-cmd">Restore command</label>
+      <div class="copy-row">
+        <input type="text" id="restore-cmd" readonly value='git clone "{{ mirror_path }}"'>
+        <button type="button" data-copy="#restore-cmd">Copy</button>
+      </div>
+      <div class="hint">The command makes a normal working copy from the mirror. If you run it on a
+        different computer, replace the start of the path ({{ mirror_root }}) with the path of the
+        mirror share on that computer.</div>
+    </div>
+    {% else %}
+    <div class="hint">No mirror on disk yet. Select "Sync now" to make it.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if r.last_error and r.last_status in ('error', 'warn') %}
+<div class="panel">
+  <div class="panel-head">
+    <h2>{{ 'Last error' if r.last_status == 'error' else 'Last warning' }}</h2>
+    <span class="spacer"></span>
+    <span class="mono-cell muted">{{ r.last_sync_at | ago }}</span>
+  </div>
+  <div class="panel-body pad"><div class="detail-log">{{ r.last_error }}</div></div>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>History</h2>
+    {% if log %}<span class="count">{{ log | length }}</span>{% endif %}
+  </div>
+  <div class="panel-body table-scroll">
+    {% if log %}
+    <table>
+      <thead>
+        <tr><th>When</th><th>Action</th><th>Status</th><th class="num">Duration</th><th class="num">Size</th><th>Message</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for row in log %}
+        <tr>
+          <td class="mono-cell">{{ row.finished_at | ago }}</td>
+          <td class="mono-cell">{{ row.action }}</td>
+          <td><span class="pill {{ row.status }}">{{ row.status }}</span></td>
+          <td class="num">{{ row.duration | fmt_duration }}</td>
+          <td class="num">{{ row.size_bytes | fmt_size }}</td>
+          <td class="msg-cell">{{ row.message }}</td>
+          <td>{% if row.job_id %}<a href="/jobs/{{ row.job_id }}">job</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No sync yet. Select "Sync now", or wait for the next pull job.</div>
+    {% endif %}
+  </div>
+</div>
+<script src="/static/app.js" defer></script>
+{% endblock %}

@@ -4,6 +4,7 @@ Blocking git/rsync work runs in a thread pool so it never stalls the event loop.
 Schedules are stored in the DB as cron strings and can be re-applied live from
 the settings page.
 """
+from collections.abc import Callable
 from datetime import datetime
 
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -52,6 +53,14 @@ def trigger_now(job_type: str) -> None:
     scheduler.add_job(
         jobs.JOBS[job_type].run, "date", run_date=datetime.now(),
         id=f"manual-{job_type}-{datetime.now().timestamp()}",
+    )
+
+
+def run_in_background(func: Callable[..., None], *args: object) -> None:
+    """Run a function one time, now, in the scheduler's thread pool."""
+    scheduler.add_job(
+        func, "date", run_date=datetime.now(), args=args,
+        id=f"once-{func.__name__}-{datetime.now().timestamp()}",
     )
 
 

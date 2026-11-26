@@ -170,6 +170,8 @@ def _paginate(client: httpx.Client, path: str, params: dict) -> Iterator[dict]:
 
 def _repo_dict(repo: dict) -> dict:
     return {
+        # Numeric id: stays the same when the repository is renamed.
+        "id": repo.get("id"),
         "full_name": repo["full_name"],
         "private": 1 if repo.get("private") else 0,
         "fork": 1 if repo.get("fork") else 0,
