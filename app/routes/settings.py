@@ -12,6 +12,7 @@ _BOOL_KEYS = (
     "include_forks", "include_archived", "include_wikis", "fetch_lfs",
     "telegram_enabled", "notify_on_success", "notify_on_fail", "protection_delete",
     "auto_enable_new",
+    "metadata_enabled",
 )
 _TEXT_KEYS = ("telegram_chat_id",)
 # Secrets are never sent back to the browser. An empty field on save means

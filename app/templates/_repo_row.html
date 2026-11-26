@@ -15,6 +15,7 @@
     {% endif %}
   </td>
   <td class="num">{{ r.size_bytes | fmt_size }}</td>
+  {% include "_repo_meta_cell.html" %}
   <td>
     <button class="toggle" data-on="{{ r.enabled }}"
             title="{{ 'Enabled — will be mirrored' if r.enabled else 'Disabled — skipped' }}"

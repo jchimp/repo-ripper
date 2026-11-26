@@ -20,6 +20,10 @@ SEED_KEYS = (
     "schedule_scan", "schedule_pull", "schedule_protection",
     "auto_enable_new",
 )
+# Settings that have no env variable in config.py: key -> default value.
+SEED_DEFAULTS = {
+    "metadata_enabled": "1",
+}
 
 
 @contextmanager
@@ -57,6 +61,9 @@ def _seed_settings() -> None:
             conn.execute(
                 "INSERT INTO settings (key, value) VALUES (?, ?)", (key, str(val))
             )
+        for key, val in SEED_DEFAULTS.items():
+            if key not in existing:
+                conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, val))
 
 
 # --- settings ---------------------------------------------------------------
@@ -244,6 +251,37 @@ def record_watch_owner_scan(owner_id: int, error: str | None) -> None:
         conn.execute(
             "UPDATE watch_owners SET last_scan_at = ?, last_error = ? WHERE id = ?",
             (time.time(), error, owner_id),
+def toggle_repo_metadata(repo_id: int) -> None:
+    """Switch the metadata capture of one repository on or off."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE repos SET metadata_enabled = 1 - metadata_enabled WHERE id = ?",
+            (repo_id,),
+        )
+
+
+def list_repos_for_metadata() -> list[sqlite3.Row]:
+    """Repositories that get a metadata capture, the oldest capture first.
+
+    A repository with no capture yet comes before all others, so that a job
+    that stopped on a rate limit continues with the work that is not done.
+    """
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM repos WHERE enabled = 1 AND metadata_enabled = 1 "
+            "ORDER BY meta_sync_at IS NOT NULL, meta_sync_at, full_name"
+        ).fetchall()
+
+
+def record_metadata_result(full_name: str, status: str, message: str,
+                           issues: int | None, pulls: int | None) -> None:
+    """Store the result of a metadata capture. A count of None keeps the old count."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE repos SET meta_sync_at = ?, meta_status = ?, meta_message = ?, "
+            "meta_issues = COALESCE(?, meta_issues), meta_pulls = COALESCE(?, meta_pulls) "
+            "WHERE full_name = ?",
+            (time.time(), status, message, issues, pulls, full_name),
         )
 
 
