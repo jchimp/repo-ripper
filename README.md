@@ -87,6 +87,21 @@ share. Change the owner of the folder to `1000:1000`, or mount the share with
 `uid=1000` (SMB), then select the folder again. If you mount the share after
 the container started, run `docker compose restart`.
 
+## Upgrade from a version before the setup wizard
+
+Older versions mounted the NAS at `/data/mirrors` and `/data/protection` in
+`docker-compose.yml`. The file now has one NAS mount, `/mnt/nas`. If you take
+the new file and change nothing else, the app still uses `/data/mirrors`, which
+is then a folder on the local disk of the Docker host. The next sync makes new
+clones there. No data is deleted, but the mirrors are not on the NAS.
+
+Do one of these:
+
+- Keep your two old volume lines in `docker-compose.yml`. Nothing changes.
+- Or use the new mount, then open **Settings**, **Storage**, and select the
+  folders below `/mnt/nas` that hold your mirrors and your protection copy.
+  The app finds the mirrors that are there and updates them.
+
 ## The three jobs
 
 - **Scan** — lists repos via the GitHub API and enrols new ones. Honours the
