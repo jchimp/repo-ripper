@@ -1,0 +1,61 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="panel">
+  <div class="panel-head"><h2>{{ refs.branches | length }} {{ 'branch' if refs.branches | length == 1 else 'branches' }}</h2></div>
+  <div class="panel-body">
+    {% if refs.branches %}
+    <table class="ref-list">
+      <thead><tr><th>Branch</th><th>Last commit</th><th>Date</th><th>Sha</th></tr></thead>
+      <tbody>
+        {% for b in refs.branches[:max_refs] %}
+        <tr>
+          <td><a class="repo-name" href="{{ u.code(rev=b.name) }}">{{ b.name }}</a>
+            {%- if b.name == refs.default_branch %}<span class="tag">default</span>{% endif %}</td>
+          <td class="subject-cell">{{ b.subject }}</td>
+          <td class="mono-cell" title="{{ b.time | when }}">{{ b.time | ago }}</td>
+          <td class="mono-cell"><a href="{{ u.commit(b.sha) }}">{{ b.sha[:8] }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if refs.branches | length > max_refs %}<div class="notice">The list shows the newest {{ max_refs }} branches.</div>{% endif %}
+    {% else %}
+    <div class="empty">The mirror has no branches.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel" id="tags">
+  <div class="panel-head"><h2>{{ refs.tags | length }} {{ 'tag' if refs.tags | length == 1 else 'tags' }}</h2></div>
+  <div class="panel-body">
+    {% if refs.tags %}
+    <table class="ref-list">
+      <thead><tr><th>Tag</th><th>Release</th><th>Date</th><th>Sha</th></tr></thead>
+      <tbody>
+        {% for t in refs.tags[:max_refs] %}
+        {% set rel = releases.get(t.name) %}
+        <tr>
+          <td><a class="repo-name" href="{{ u.code(rev=t.name) }}">{{ t.name }}</a></td>
+          <td class="subject-cell">
+            {% if rel %}<a href="{{ u.page('releases') }}">{{ rel.name or rel.tag_name }}</a>
+              {%- if rel.prerelease %}<span class="tag">pre-release</span>{% endif %}
+              {%- if rel.draft %}<span class="tag">draft</span>{% endif %}
+            {% else %}<span class="muted">{{ t.subject }}</span>{% endif %}
+          </td>
+          <td class="mono-cell" title="{{ t.time | when }}">{{ t.time | ago }}</td>
+          <td class="mono-cell"><a href="{{ u.commit(t.sha) }}">{{ t.sha[:8] }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if refs.tags | length > max_refs %}<div class="notice">The list shows the newest {{ max_refs }} tags.</div>{% endif %}
+    {% else %}
+    <div class="empty">The mirror has no tags.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if refs.pull_count %}
+<p class="hint">The mirror also holds {{ refs.pull_count }} pull request {{ 'ref' if refs.pull_count == 1 else 'refs' }} (<code>refs/pull/&lt;number&gt;/head</code>). This page does not list them. The Pull requests pages use them.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="panel">
+  <div class="panel-body">
+    <div class="empty state-box">
+      {% if state == 'no_mirror' %}
+      <h2>The mirror is not on disk yet</h2>
+      <p>repo-ripper did not clone this repository. Run the job <strong>{{ pull_job }}</strong> on the Dashboard. Then open this page again.</p>
+      {% elif state == 'no_wiki' %}
+      <h2>This repository has no wiki mirror</h2>
+      <p>The job <strong>{{ pull_job }}</strong> makes a wiki mirror only when the wiki exists on GitHub and the wiki setting is on.</p>
+      {% elif state == 'empty_repo' %}
+      <h2>The repository is empty</h2>
+      <p>The mirror is on disk, but it has no commits and no branches.</p>
+      {% elif state == 'no_meta' %}
+      <h2>The metadata is not captured yet</h2>
+      <p>Pull requests, issues and releases come from the GitHub API, not from git. Run the job <strong>{{ metadata_job }}</strong> on the Dashboard. Make sure that the Metadata switch of this repository is on.</p>
+      {% elif state == 'git_error' %}
+      <h2>git could not read the mirror</h2>
+      <p>{{ message }}</p>
+      <p>Make sure that the storage is connected. Then open this page again.</p>
+      {% else %}
+      <h2>Not found</h2>
+      <p>{{ message }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "browse_base.html" %}
+{% import "_browse_macros.html" as mac %}
+{% block browse %}
+<div class="item-header">
+  <h2 class="item-h">{{ pull.title or '(no title)' }} <span class="muted">#{{ number }}</span></h2>
+  <div class="item-meta">
+    {{ mac.badge(badge) }}
+    <span><strong>{{ author }}</strong> {{ {'merged': 'merged', 'closed': 'wanted to merge'}.get(badge[1], 'wants to merge') }}
+      <span class="branch">{{ head.label or head.ref or 'unknown' }}</span> into
+      <span class="branch">{{ base.label or base.ref or 'unknown' }}</span></span>
+    {{ mac.labels(pull.labels) }}
+    <span class="spacer"></span>
+    {{ mac.github_link(pull.html_url) }}
+  </div>
+</div>
+
+<nav class="state-tabs sub" aria-label="Pull request sections">
+  <a href="{{ u.page('pulls/' ~ number) }}" {% if tab == 'conversation' %}class="active" aria-current="true"{% endif %}>Conversation</a>
+  <a href="{{ u.page('pulls/' ~ number, tab='commits') }}" {% if tab == 'commits' %}class="active" aria-current="true"{% endif %}>Commits <span class="count">{{ commit_count }}</span></a>
+  <a href="{{ u.page('pulls/' ~ number, tab='files') }}" {% if tab == 'files' %}class="active" aria-current="true"{% endif %}>Files changed</a>
+</nav>
+
+{% if tab == 'conversation' %}
+  {% set opened_at = pull.created_at %}
+  {% include "_browse_timeline.html" %}
+
+{% elif tab == 'commits' %}
+<div class="panel">
+  <div class="panel-body">
+    {% if commits %}
+    <table class="commit-list">
+      <thead><tr><th>Commit</th><th>Author</th><th>Date</th><th>Sha</th></tr></thead>
+      <tbody>
+        {% for c in commits %}
+        {% set info = c.commit if c.commit is mapping else {} %}
+        {% set who = info.author if info.author is mapping else {} %}
+        {% set subject = (info.message or '').split('\n')[0] or '(no message)' %}
+        <tr>
+          <td>{% if c.sha in known %}<a class="subject" href="{{ u.commit(c.sha) }}">{{ subject }}</a>
+              {% else %}<span class="subject">{{ subject }}</span> <span class="tag" title="Run the job {{ pull_job }} to get it.">not in the mirror</span>{% endif %}</td>
+          <td class="author">{{ who.name or (c.author.login if c.author is mapping else '') or 'unknown' }}</td>
+          <td class="mono-cell" title="{{ who.date | when }}">{{ who.date | ago }}</td>
+          <td class="mono-cell">{% if c.sha in known %}<a href="{{ u.commit(c.sha) }}">{{ (c.sha or '')[:8] }}</a>{% else %}{{ (c.sha or '')[:8] }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">The captured metadata has no commit list for this pull request.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+  {% if files_note == 'no_mirror' %}
+  <div class="panel"><div class="empty">The mirror of this repository is not on disk, so the changed files cannot be computed. Run the job <strong>{{ pull_job }}</strong>.</div></div>
+  {% elif files_note == 'missing' %}
+  <div class="panel"><div class="empty">
+    The {{ missing | join(' and the ') }} commit of this pull request {{ 'is' if missing | length == 1 else 'are' }} not in the mirror
+    {%- if head_sha or base_sha %} (head <span class="sha">{{ head_sha[:10] or 'unknown' }}</span>, base <span class="sha">{{ base_sha[:10] or 'unknown' }}</span>){% endif %}.
+    The changed files cannot be computed. Run the job <strong>{{ pull_job }}</strong>, then open this page again.
+    If the commit is still missing after that, it was removed on GitHub (for example by a
+    force-push) before the mirror got it.
+  </div></div>
+  {% else %}
+  <p class="hint">Computed from the local mirror: the changes from <a class="sha" href="{{ u.commit(diff_base) }}">{{ diff_base[:10] }}</a> (where the branch started) to <a class="sha" href="{{ u.commit(diff_rev) }}">{{ diff_rev[:10] }}</a>.</p>
+  {% include "_browse_diff.html" %}
+  {% endif %}
+{% endif %}
+{% endblock %}

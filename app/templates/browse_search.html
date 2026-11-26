@@ -1,0 +1,57 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="panel">
+  <div class="panel-head"><h2>Search in the code</h2></div>
+  <div class="panel-body pad">
+    <form class="search-form" method="get" action="{{ u.repo_base }}/search" role="search">
+      <div class="field">
+        <label for="search-q">Text to find (exact text, not a regular expression)</label>
+        <input type="text" id="search-q" name="q" value="{{ q }}" maxlength="200">
+      </div>
+      <div class="search-opts">
+        {% set shown_branches = refs.branches[:max_refs] %}
+        {% set shown_tags = refs.tags[:max_refs] %}
+        {% set names = (shown_branches + shown_tags) | map(attribute='name') | list %}
+        <label for="search-rev">Revision</label>
+        <select id="search-rev" name="rev">
+          {% if rev.name not in names %}<option value="{{ u.rev or rev.sha }}" selected>{{ rev.name }}</option>{% endif %}
+          {% for b in shown_branches %}<option value="{{ b.name }}" {{ 'selected' if b.name == rev.name }}>{{ b.name }}</option>{% endfor %}
+          {% for t in shown_tags %}<option value="{{ t.name }}">{{ t.name }}</option>{% endfor %}
+        </select>
+        <span class="check"><input type="checkbox" id="search-case" name="case" value="1" {{ 'checked' if case }}>
+          <label for="search-case">Match upper and lower case</label></span>
+        <button type="submit" class="primary">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if result is not none %}
+<div class="panel">
+  <div class="panel-head">
+    <h2>{{ result.matches | length }} matching {{ 'line' if result.matches | length == 1 else 'lines' }} in {{ groups | length }} {{ 'file' if groups | length == 1 else 'files' }} at {{ rev.name }}</h2>
+  </div>
+  <div class="panel-body">
+    {% if result.truncated %}
+    <div class="notice warn" role="status">There are more matches. The page shows the first {{ result.matches | length }} lines, and at most 50 lines for each file. Make the text more specific.</div>
+    {% endif %}
+    {% for path, matches in groups %}
+    <div class="search-file">
+      <a class="path" href="{{ u.blob(path) }}">{{ path }}</a>
+      <div class="code-view">
+        <table class="code">
+          <tbody>
+            {% for m in matches -%}
+            <tr><td class="ln"><a href="{{ u.blob(path, line=m.line_no, plain=True) }}">{{ m.line_no }}</a></td><td class="src">{{ m.text }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty">No line in this revision contains that text. Binary files are not searched.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

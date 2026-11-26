@@ -1,0 +1,61 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="browse-bar">
+  <span class="rev-label" title="{{ rev.sha }}">{{ rev.name }}</span>
+  {% include "_browse_crumbs.html" %}
+</div>
+
+<div class="panel">
+  <div class="panel-head last-commit">
+    {% if last %}
+    <span class="who-name">{{ last.author_name }}</span>
+    <a class="subject" href="{{ u.commit(last.sha) }}">{{ last.subject or '(no message)' }}</a>
+    <span class="spacer"></span>
+    <a class="sha" href="{{ u.commit(last.sha) }}">{{ last.sha[:8] }}</a>
+    <span class="when" title="{{ last.committer_time | when }}">{{ last.committer_time | ago }}</span>
+    {% else %}
+    <span class="spacer"></span>
+    {% endif %}
+  </div>
+  <div class="file-facts">
+    {% if info.kind == 'blob' %}
+    <span>{{ info.size | fmt_size if info.size else '0 B' }}</span>
+    {% if view == 'text' %}<span>{{ lines | length }} lines</span>{% endif %}
+    {% if symlink %}<span>symbolic link</span>{% elif info.mode == '100755' %}<span>executable</span>{% endif %}
+    <span class="spacer"></span>
+    {% if is_markdown %}
+      {% if view == 'markdown' %}<a href="{{ u.blob(path, plain=True) }}">Source</a>
+      {% else %}<a href="{{ u.blob(path) }}">Rendered</a>{% endif %}
+    {% endif %}
+    <a href="{{ u.raw(path) }}">Raw</a>
+    {% else %}
+    <span class="spacer"></span>
+    {% endif %}
+    <a href="{{ u.commits(path) }}">History</a>
+  </div>
+  <div class="panel-body">
+    {% if view == 'text' %}
+    <div class="code-view">
+      <table class="code hl">
+        <tbody>
+          {# Safe: when the file is highlighted, each line is Pygments output (escaped text
+             in <span class> tags). When it is not, each line is plain text and Jinja escapes it. #}
+          {% for line in lines -%}
+          <tr id="L{{ loop.index }}"><td class="ln"><a href="#L{{ loop.index }}">{{ loop.index }}</a></td><td class="src">{{ line }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% elif view == 'markdown' %}
+    {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
+    <div class="md pad">{{ html }}</div>
+    {% elif view == 'image' %}
+    <div class="image-view"><img src="{{ u.raw(path) }}" alt="{{ info.name }}"></div>
+    {% elif view == 'submodule' %}
+    <div class="empty">This path is a submodule at commit <span class="sha">{{ info.oid[:12] }}</span>. Its files are in another repository.</div>
+    {% else %}
+    <div class="empty">{{ note }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

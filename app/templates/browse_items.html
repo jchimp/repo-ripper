@@ -1,0 +1,67 @@
+{% extends "browse_base.html" %}
+{% import "_browse_macros.html" as mac %}
+{% block browse %}
+{% set noun = 'pull requests' if kind == 'pull' else 'issues' %}
+<div class="browse-bar">
+  <nav class="state-tabs" aria-label="Filter by state">
+    {% for s in states %}
+    <a href="{{ u.page(area, state=s if s != 'all' else '', q=q) }}" {% if s == state %}class="active" aria-current="true"{% endif %}>
+      {{- {'all': 'All', 'open': 'Open', 'closed': 'Closed', 'merged': 'Merged'}[s] }}
+      <span class="count">{{ counts.total if s == 'all' else counts[s] }}</span></a>
+    {% endfor %}
+  </nav>
+  <span class="spacer"></span>
+  <form class="code-search" method="get" action="{{ u.page(area) }}" role="search">
+    {% if state != 'all' %}<input type="hidden" name="state" value="{{ state }}">{% endif %}
+    <label class="sr-only" for="item-q">Search in title, author and labels</label>
+    <input type="text" id="item-q" name="q" value="{{ q }}" placeholder="Title, author, label or number" maxlength="200">
+    <button type="submit" class="ghost">Search</button>
+  </form>
+</div>
+{% if kind == 'pull' and state == 'closed' %}
+<p class="hint">Closed includes the merged pull requests.</p>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>{{ total }} {{ noun if total != 1 else noun[:-1] }}{% if q %} that match "{{ q }}"{% endif %}</h2>
+    {% if q %}<span class="spacer"></span><a href="{{ u.page(area, state=state if state != 'all' else '') }}">Clear the search</a>{% endif %}
+  </div>
+  <div class="panel-body">
+    {% if items %}
+    <ul class="item-list">
+      {% for it in items %}
+      {% set pair = ('merged', 'merged') if it.merged else ('closed', 'closed') if it.state == 'closed' else ('draft', 'draft') if it.draft else ('open', 'open') %}
+      <li>
+        {{ mac.badge(pair) }}
+        <div class="item-main">
+          <a class="item-title" href="{{ u.page(area ~ '/' ~ it.number) }}">{{ it.title or '(no title)' }}</a>
+          {% for lb in it.labels or [] if lb.name %}
+          {% set color = lb.color | label_color %}
+          <a class="label" href="{{ u.page(area, state=state if state != 'all' else '', q=lb.name) }}"
+             {%- if color %} style="--label: {{ color }}"{% endif %}>{{ lb.name }}</a>
+          {% endfor %}
+          <div class="item-sub">#{{ it.number }} · {{ it.user or 'unknown' }} · opened
+            <span title="{{ it.created_at | when }}">{{ it.created_at | ago }}</span>
+            {%- if it.merged_at %} · merged <span title="{{ it.merged_at | when }}">{{ it.merged_at | ago }}</span>
+            {%- elif it.closed_at %} · closed <span title="{{ it.closed_at | when }}">{{ it.closed_at | ago }}</span>{% endif %}
+          </div>
+        </div>
+        {% set talk = (it.comments or 0) + (it.review_comments or 0) %}
+        {% if talk %}<span class="item-comments" title="Comments">{{ talk }} {{ 'comment' if talk == 1 else 'comments' }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif counts.total == 0 %}
+    <div class="empty">The captured metadata has no {{ noun }} for this repository.</div>
+    {% else %}
+    <div class="empty">No {{ noun }} match this filter.</div>
+    {% endif %}
+  </div>
+</div>
+{% set st = state if state != 'all' else '' %}
+{% set prev_url = u.page(area, state=st, q=q, page=page - 1 if page > 2 else '') if page > 1 else '' %}
+{% set next_url = u.page(area, state=st, q=q, page=page + 1) if page < pages else '' %}
+{% set pager_label = 'Page ' ~ page ~ ' of ' ~ pages %}
+{% include "_browse_pager.html" %}
+{% endblock %}

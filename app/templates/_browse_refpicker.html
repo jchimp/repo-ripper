@@ -1,0 +1,28 @@
+{# Revision selector. Needs `refs`, `rev`, `picker_action`, `max_refs`. #}
+{% set shown_branches = refs.branches[:max_refs] %}
+{% set shown_tags = refs.tags[:max_refs] %}
+{% set names = (shown_branches + shown_tags) | map(attribute='name') | list %}
+<form class="ref-picker" method="get" action="{{ picker_action }}">
+  <label for="rev-select">Revision</label>
+  <select id="rev-select" name="rev">
+    {% if rev.name not in names %}
+    <option value="{{ u.rev or rev.sha }}" selected>{{ rev.name }}</option>
+    {% endif %}
+    {% if shown_branches %}
+    <optgroup label="Branches">
+      {% for b in shown_branches %}
+      <option value="{{ b.name }}" {{ 'selected' if b.name == rev.name }}>{{ b.name }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endif %}
+    {% if shown_tags %}
+    <optgroup label="Tags">
+      {% for t in shown_tags %}
+      <option value="{{ t.name }}" {{ 'selected' if t.name == rev.name and rev.name not in (shown_branches | map(attribute='name') | list) }}>{{ t.name }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endif %}
+  </select>
+  {% if picker_q is defined %}<input type="hidden" name="q" value="{{ picker_q }}">{% endif %}
+  <button type="submit" class="ghost">Show</button>
+</form>

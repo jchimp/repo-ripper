@@ -1,0 +1,38 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="browse-bar">
+  {% set picker_action = u.base ~ '/commits' ~ ('/' ~ (path | urlencode) if path else '') %}
+  {% include "_browse_refpicker.html" %}
+  {% if path %}{% include "_browse_crumbs.html" %}{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>History of {{ path or rev.name }}</h2>
+  </div>
+  <div class="panel-body">
+    {% if commits %}
+    <table class="commit-list">
+      <thead><tr><th>Commit</th><th>Author</th><th>Date</th><th>Sha</th></tr></thead>
+      <tbody>
+        {% for c in commits %}
+        <tr>
+          <td><a class="subject" href="{{ u.commit(c.sha) }}">{{ c.subject or '(no message)' }}</a>
+            {%- if c.parents | length > 1 %}<span class="tag">merge</span>{% endif %}</td>
+          <td class="author">{{ c.author_name }}</td>
+          <td class="mono-cell" title="{{ c.author_time | when }}">{{ c.author_time | ago }}</td>
+          <td class="mono-cell"><a href="{{ u.commit(c.sha) }}">{{ c.sha[:8] }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">{{ 'There are no more commits.' if page > 1 else 'No commit changes this path in this revision.' }}</div>
+    {% endif %}
+  </div>
+</div>
+{% set prev_url = u.commits(path, page=page - 1) if page > 1 else '' %}
+{% set next_url = u.commits(path, page=page + 1) if has_next else '' %}
+{% set pager_label = 'Page ' ~ page %}
+{% include "_browse_pager.html" %}
+{% endblock %}
