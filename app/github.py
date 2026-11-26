@@ -266,7 +266,9 @@ def check_token(token: str) -> TokenCheck:
     try:
         data = r.json()
     except ValueError:
-        result.error_kind, result.error = "other", "GitHub sent an answer that is not valid JSON."
+        data = None
+    if not isinstance(data, dict):
+        result.error_kind, result.error = "other", "GitHub sent an answer that is not valid."
         return result
 
     result.ok = True

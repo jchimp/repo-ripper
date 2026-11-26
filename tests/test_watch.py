@@ -184,7 +184,8 @@ def test_network_failure_has_a_plain_message(gh: GH) -> None:
 
     gh(handler)
     result = watch.add_repo("octo/demo")
-    assert not result.ok and result.message == "Cannot reach GitHub (ConnectError)."
+    assert not result.ok
+    assert result.message == f"{github.MSG_NETWORK} (ConnectError)"
 
 
 def test_add_repo_bad_text_makes_no_github_call(gh: GH) -> None:
@@ -222,7 +223,8 @@ def test_list_all_repos_pages_and_filters(gh: GH, monkeypatch: pytest.MonkeyPatc
     everything = github.list_all_repos(include_forks=True, include_archived=True)
     assert [r["full_name"] for r in everything] == ["me/a", "me/b", "me/c", "me/d"]
     assert everything[0] == {"full_name": "me/a", "private": 1, "fork": 0, "archived": 0,
-                             "default_branch": "main", "has_wiki": True}
+                             "default_branch": "main", "has_wiki": True,
+                             "owner": "me", "description": "", "size_kb": 0, "pushed_at": ""}
     assert {r.url.path for r in seen} == {"/user/repos"}
     assert seen[0].url.params["visibility"] == "all"
     assert seen[0].headers["authorization"] == "Bearer test-token-value"
@@ -449,7 +451,7 @@ def test_scan_token_part_fails_and_owners_continue(gh: GH, monkeypatch: pytest.M
     assert [r["full_name"] for r in db.list_repos()] == ["octocat/a"]
     job = last_job()
     assert job["status"] == "partial"
-    assert "My repositories: failed (GitHub refused the token." in job["summary"]
+    assert "My repositories: failed (GitHub rejected the token." in job["summary"]
     assert "test-token-value" not in job["summary"] + job["detail"]
 
 
