@@ -1,25 +1,41 @@
+{# One repository row. Needs `r`. Optional `row_note`: a message for this row. #}
+{% set st = r | repo_status %}
 <tr id="repo-{{ r.id }}">
+  <td class="sel">
+    <input type="checkbox" name="ids" value="{{ r.id }}" form="bulk-form"
+           aria-label="Select {{ r.full_name }}">
+  </td>
   <td>
-    <span class="repo-name">{{ r.full_name }}</span>
+    <a class="repo-name" href="/repos/{{ r.id }}">{{ r.full_name }}</a>
     {% if r.private %}<span class="tag">private</span>{% endif %}
     {% if r.fork %}<span class="tag">fork</span>{% endif %}
     {% if r.archived %}<span class="tag">archived</span>{% endif %}
     {% if r.source == 'watched' %}<span class="tag tag-watched">watched</span>{% include "_watch_stop.html" %}{% endif %}
+    {% if r.upstream_state == 'gone' %}<span class="tag tag-warn" title="Not in the GitHub listing. The mirror stays on disk.">gone upstream</span>{% endif %}
+    {% if r.last_verify_status == 'error' %}<span class="tag tag-fail" title="git fsck found a problem in the mirror.">verify failed</span>{% endif %}
   </td>
-  <td class="mono-cell">{{ r.last_sync_at | fmt_time }}</td>
+  <td class="mono-cell col-sync">{{ r.last_sync_at | ago }}</td>
   <td>
-    {% if r.last_status %}
-      <span class="pill {{ r.last_status }}" title="{{ r.last_error or '' }}">{{ r.last_status }}</span>
-    {% else %}
-      <span class="pill skipped">pending</span>
-    {% endif %}
+    <span class="pill {{ 'skipped' if st == 'pending' else st }}"
+          {%- if r.last_error and st in ('error', 'warn') %} title="{{ r.last_error | truncate(300) }}"{% endif %}>{{ st }}</span>
   </td>
-  <td class="num">{{ r.size_bytes | fmt_size }}</td>
+  <td class="num col-size">{{ r.size_bytes | fmt_size }}</td>
+  {% include "_repo_meta_cell.html" %}
   <td>
-    <button class="toggle" data-on="{{ r.enabled }}"
-            title="{{ 'Enabled — will be mirrored' if r.enabled else 'Disabled — skipped' }}"
+    <button type="button" class="toggle" data-on="{{ r.enabled }}"
+            aria-pressed="{{ 'true' if r.enabled else 'false' }}"
+            aria-label="Backup of {{ r.full_name }}"
+            title="{{ 'Backup is on. The pull job mirrors it.' if r.enabled else 'Backup is off. The pull job skips it.' }}"
             hx-post="/repos/{{ r.id }}/toggle"
             hx-target="#repo-{{ r.id }}"
             hx-swap="outerHTML"></button>
   </td>
+  {# === actions cell: add one action for this row below === #}
+  <td class="row-actions">
+    <button type="button" class="ghost small" {{ 'disabled' if st == 'running' }}
+            hx-post="/repos/{{ r.id }}/sync" hx-target="#repo-{{ r.id }}" hx-swap="outerHTML"
+            title="Mirror this repository now">Sync</button>
+    {% if row_note %}<div class="row-note" role="status">{{ row_note }}</div>{% endif %}
+  </td>
+  {# === end of actions cell === #}
 </tr>

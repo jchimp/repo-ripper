@@ -5,8 +5,8 @@ Mirrors every GitHub repository your token can see to a NAS folder as bare
 for protection, and gives you a small authenticated UI with schedules, per-repo
 status, and optional Telegram notifications.
 
-Point a local git UI (Forgejo, klaus, cgit, lazygit) at `MIRROR_ROOT` when you
-want visual diffs and history — repo-ripper handles the capture, not the viewer.
+The UI also has a read-only browser for the mirrored code, the history and the
+captured pull requests and issues. See [Browse](#browse).
 
 ## Stack
 
@@ -102,16 +102,49 @@ Do one of these:
   folders below `/mnt/nas` that hold your mirrors and your protection copy.
   The app finds the mirrors that are there and updates them.
 
-## The three jobs
+## The jobs
 
-- **Scan** — lists repos via the GitHub API and enrols new ones. Honours the
-  fork/archived toggles.
-- **Pull** — `git clone --mirror` on first sight, then `git remote update
-  --prune` thereafter, for every *enabled* repo. Best-effort LFS and wiki.
-- **Protection copy** — `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`,
-  optionally `--delete` for an exact replica.
+- **Scan GitHub** lists the repositories through the GitHub API and adds the
+  new ones. It obeys the fork and archived settings. It also finds renamed
+  repositories and repositories that are gone upstream (see below).
+- **Pull mirrors** makes a `git clone --mirror` the first time, then runs
+  `git remote update --prune`, for each repository that has the backup on. It
+  mirrors 4 repositories at the same time. You can set 1 to 8 in Settings,
+  section "Sync". One repository that fails does not stop the others.
+- **Protection copy** runs `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`.
+  With `--delete` on, the copy is an exact replica.
+- **Verify mirrors** runs `git fsck` on each mirror on disk, one time each
+  week. A mirror that fails gets the tag `verify failed`.
+- **Capture metadata** downloads pull requests, issues, comments and releases
+  from the GitHub API to JSON files next to each mirror. See [Metadata](#metadata).
 
-Each has its own cron schedule (Settings) and a **Run now** button (Dashboard).
+Each job has a cron schedule (Settings) and a **Run now** button (Dashboard).
+While a job runs, the dashboard and the job page show the progress, the
+repositories in work, and the log. The pages update every 2 seconds.
+
+### Repository status
+
+| Status | Meaning |
+| --- | --- |
+| `ok` | The last sync was good. |
+| `warn` | The mirror is updated, but a part failed. Example: the Git LFS fetch. The repository page shows the reason. |
+| `error` | The last sync failed. The mirror on disk is not changed. |
+| `pending` | No sync yet. |
+| `running` | A sync is in work now. |
+
+A repository can also have these tags:
+
+- `gone upstream`: the repository is not in the GitHub listing. It was
+  deleted, or the token can no longer see it. The mirror stays on disk and
+  the pull job skips the repository. If the repository comes back, the next
+  scan removes the tag. repo-ripper never deletes a mirror.
+- `verify failed`: `git fsck` found a problem in the mirror. If GitHub still
+  has the repository, move the mirror folder away and select **Sync now**.
+
+The Repositories page has search, filters, sort and actions for the checked
+rows (backup on, backup off, sync now). The address of a filtered list can be
+kept as a bookmark. Select a repository name to see its facts, its sync
+history, the last error in full, and the restore command.
 
 ## Watch public repositories
 
@@ -155,8 +188,9 @@ very large number of issues. Turn it on for a repository if you want it.
 
 ## Token
 
-A fine-grained PAT with read-only **Contents** + **Metadata** is enough; add the
-private repos you want it to reach. Classic PATs need the `repo` scope for
+A fine-grained PAT needs these read-only permissions: **Contents** and
+**Metadata** for the git mirrors, plus **Issues** and **Pull requests** for the
+metadata capture. Add the private repos you want it to reach. Classic PATs need the `repo` scope for
 private repos. The token is passed to git per-command via `http.extraHeader`, so
 it is never written into the mirrors' config on the NAS.
 
@@ -166,6 +200,100 @@ If `SECRET_KEY` changes, the stored token cannot be read: enter the token
 again. A `GITHUB_TOKEN` value in `.env` is used only when no token is stored.
 Each scan checks the token. The dashboard shows a notice when GitHub rejects
 the token or when the token expires in less than 14 days.
+
+## Metadata
+
+A git mirror holds the code and the history. It does not hold pull request
+conversations, issues or releases, because GitHub keeps these outside git. The
+job **Capture metadata** downloads them from the GitHub API.
+
+What the job captures for each repository:
+
+- Pull requests: the pull request, its conversation comments, its review
+  comments (comments on diff lines), its reviews, and its commit list.
+- Issues and their comments.
+- Labels, milestones, and releases. For a release asset the job stores the
+  name, size and URL. It does not download the asset file.
+- The GitHub repository object (description, topics, default branch).
+
+Where the data is stored: in plain JSON files in a folder next to the mirror.
+You can read the files without repo-ripper. The protection copy includes them.
+
+```
+<MIRROR_ROOT>/<owner>/<name>.git/     the git mirror
+<MIRROR_ROOT>/<owner>/<name>.meta/
+    README.txt                        what the folder is, format version
+    repo.json  labels.json  milestones.json  releases.json
+    issues/<number>.json              {"issue", "comments", "fetched_at"}
+    pulls/<number>.json               {"pull", "comments", "review_comments",
+                                       "reviews", "commits", "fetched_at"}
+    index.json                        compact list of all issues and pull requests
+    state.json                        sync position, counts, result of the last run
+```
+
+The objects are stored as GitHub returns them. Text bodies are raw Markdown.
+
+How the job works:
+
+- The first run downloads everything. Each later run downloads only the issues
+  and pull requests that changed after the last run.
+- The job saves its position after each item. If a run stops, the next run
+  continues from that position.
+- An issue or pull request that is deleted on GitHub stays on disk.
+- The job runs each day at 04:00 by default. Change the schedule in Settings.
+- To stop the capture for all repositories, clear **Capture metadata from
+  GitHub** in Settings. To stop it for one repository, use the **Metadata**
+  switch on the Repositories page.
+
+Token permissions:
+
+- Fine-grained token: **Issues** read, **Pull requests** read, **Metadata**
+  read, **Contents** read.
+- Classic token: the `repo` scope.
+- With no token the job can read public repositories only.
+
+Rate limits:
+
+- GitHub permits 5,000 API requests in one hour with a token, and 60 requests
+  in one hour with no token.
+- A pull request costs 2 to 5 requests or more. An issue costs 0 to 1 request
+  or more. Thus the first run on a large repository can use the full limit.
+- When GitHub reports the limit, the job stops and does not send more
+  requests. The job result shows how many repositories are done and the time
+  at which the limit resets. The next run continues. A large repository can
+  need more than one run.
+
+The commits of pull requests are in the git mirror, not in the metadata.
+`git clone --mirror` uses the refspec `+refs/*:refs/*`, so the mirror includes
+GitHub's `refs/pull/<number>/head` refs. Thus the commits of each pull request
+are stored locally, also when the source fork is deleted. To get them:
+
+```bash
+git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git log refs/pull/<number>/head
+```
+
+## Browse
+
+repo-ripper has a read-only browser for each repository. Select **Browse** in a
+row of the Repositories page. It reads the mirror and the metadata folder on
+disk, so it works with no connection to GitHub.
+
+- **Code**: file tree for each branch, tag or commit, the rendered README,
+  files with syntax colours, raw download, and a text search.
+- **Commits**: history of a branch or a file, and each commit with its diff.
+- **Pull requests** and **Issues**: lists with filters, and the full
+  conversation. The changed files of a pull request are computed from the
+  local mirror.
+- **Releases** and, when it is mirrored, the **Wiki**.
+
+The browser cannot change a repository, and it is not a git server. To clone
+from a mirror, to restore a repository to GitHub, to add a second viewer
+(cgit), or to learn what Forgejo can and cannot do with these mirrors, read
+[docs/HOSTING.md](docs/HOSTING.md).
+
+Text from a repository or from GitHub is not trusted: Markdown is rendered
+with raw HTML off, remote images are not loaded, and the raw file route sends
+HTML and SVG files as plain text.
 
 ## NAS mounts and permissions
 
@@ -231,6 +359,28 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
   unless you clear "Turn on backup for newly found repositories" in Settings.
 - A manual run and a scheduled run of the same job can't overlap — the second is
   recorded as `skipped`.
+- **Sync now** on one repository, or on the checked rows, is refused while the
+  full pull job runs. The pull job syncs these repositories anyway.
+- A renamed or moved repository keeps its history: the scan knows it by its
+  GitHub id, gives the entry the new name, and moves the mirror folder (and
+  the `.wiki.git` and `.meta` folders). If a folder with the new name exists,
+  nothing is moved, the job log says so, and the next pull writes to the new
+  name.
+- If GitHub returns an empty list while repositories are known, the scan
+  marks nothing as gone upstream and says so in the job summary. The usual
+  cause is a token problem.
+- With "Include archived" or "Include forks" off, the scan cannot tell a
+  repository that became archived (or a fork) from one that is gone, and can
+  mark it `gone upstream`. Its mirror stays on disk.
+- A failed Git LFS fetch gives the status `warn` with the reason. If the
+  server has no `git-lfs`, turn "Fetch Git LFS objects" off.
+- A network error during a clone or update is tried again one time.
+- A clone runs in a `<name>.git.partial` folder and gets its final name only
+  when it is complete. A clone that was stopped does not block the next run.
+- A job that a restart stopped shows as `interrupted`. Run it again.
+- The app keeps the newest 200 history rows for each repository.
+- The Telegram message of a pull job with failures lists the failed
+  repositories (10 names at most).
 - Bad cron strings are ignored on save; the previous schedule stays in effect.
 - Ports, image, and mounts are all in `docker-compose.yml`.
 

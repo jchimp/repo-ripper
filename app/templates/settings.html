@@ -27,6 +27,16 @@
   </div>
 
   <div class="form-section">
+    <h2>Metadata</h2>
+    {{ checkbox('metadata_enabled', 'Capture metadata from GitHub', s) }}
+    <div class="hint">
+      The job "Capture metadata" downloads pull requests, issues, comments, reviews and
+      releases. It stores them as JSON files next to each mirror. To stop the capture for
+      one repository, use the Metadata switch on the Repositories page.
+    </div>
+  </div>
+
+  <div class="form-section">
     <h2>Schedules</h2>
     <div class="hint" style="margin-bottom:14px">
       Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
@@ -41,6 +51,8 @@
     {% endfor %}
     <div class="hint">Leave a schedule empty to run that job by hand only.</div>
   </div>
+
+  {% include "_settings_sync.html" %}
 
   <div class="form-section">
     <h2>Protection copy</h2>

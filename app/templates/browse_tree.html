@@ -1,0 +1,78 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="browse-bar">
+  {% set picker_action = u.base ~ '/tree/' ~ (path | urlencode) if path else (u.base if rc.wiki else u.base ~ '/code') %}
+  {% include "_browse_refpicker.html" %}
+  {% include "_browse_crumbs.html" %}
+  <span class="spacer"></span>
+  {% if not rc.wiki %}
+  <form class="code-search" method="get" action="{{ u.repo_base }}/search" role="search">
+    {% if u.rev %}<input type="hidden" name="rev" value="{{ u.rev }}">{% endif %}
+    <label class="sr-only" for="code-q">Search in the code</label>
+    <input type="text" id="code-q" name="q" placeholder="Search in the code">
+    <button type="submit" class="ghost">Search</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head last-commit">
+    {% if last %}
+    <span class="who-name">{{ last.author_name }}</span>
+    <a class="subject" href="{{ u.commit(last.sha) }}">{{ last.subject or '(no message)' }}</a>
+    <span class="spacer"></span>
+    <a class="sha" href="{{ u.commit(last.sha) }}">{{ last.sha[:8] }}</a>
+    <span class="when" title="{{ last.committer_time | when }}">{{ last.committer_time | ago_text }}</span>
+    {% else %}
+    <span class="spacer"></span>
+    {% endif %}
+    <a href="{{ u.commits(path) }}">History</a>
+    {% if not rc.wiki %}
+    <a href="{{ u.repo_base }}/branches">{{ refs.branches | length }} {{ 'branch' if refs.branches | length == 1 else 'branches' }} · {{ refs.tags | length }} {{ 'tag' if refs.tags | length == 1 else 'tags' }}</a>
+    {% endif %}
+  </div>
+  <div class="panel-body">
+    {% if tree.entries or path %}
+    <table class="tree">
+      <tbody>
+        {% if path %}
+        <tr><td colspan="2"><a class="dir" href="{{ u.tree(path.rpartition('/')[0]) }}" aria-label="Parent folder">..</a></td></tr>
+        {% endif %}
+        {% for e in tree.entries %}
+        <tr>
+          <td>
+            {% if e.kind == 'tree' %}<a class="dir" href="{{ u.tree(e.path) }}">{{ e.name }}/</a>
+            {% elif e.kind == 'blob' %}<a class="file" href="{{ u.blob(e.path) }}">{{ e.name }}</a>
+            {% else %}<span class="submodule" title="Submodule. Its files are in another repository.">{{ e.name }} @ {{ e.oid[:8] }}</span>
+            {% endif %}
+          </td>
+          <td class="num">{{ e.size | fmt_size if e.kind == 'blob' and e.size else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if tree.truncated %}
+    <div class="notice">This folder has too many entries. The list is not complete.</div>
+    {% endif %}
+    {% else %}
+    <div class="empty">This revision has no files.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if readme_entry %}
+<div class="panel">
+  <div class="panel-head"><h2><a href="{{ u.blob(readme_entry.path) }}">{{ readme_entry.name }}</a></h2></div>
+  <div class="panel-body pad">
+    {% if readme_html is not none %}
+    {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
+    <div class="md">{{ readme_html }}</div>
+    {% elif readme_text is not none %}
+    <pre class="plain-text">{{ readme_text }}</pre>
+    {% else %}
+    <div class="empty">{{ readme_note or 'The README file is not text.' }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

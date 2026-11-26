@@ -12,6 +12,7 @@ _BOOL_KEYS = (
     "include_forks", "include_archived", "include_wikis", "fetch_lfs",
     "telegram_enabled", "notify_on_success", "notify_on_fail", "protection_delete",
     "auto_enable_new",
+    "metadata_enabled",
 )
 _TEXT_KEYS = ("telegram_chat_id",)
 # Secrets are never sent back to the browser. An empty field on save means
@@ -50,6 +51,7 @@ def _page(request: Request, extra: dict | None = None, status_code: int = 200) -
         "s": s,
         "secrets_set": secrets_set,
         "job_specs": list(jobs.JOBS.values()),
+        "pull_workers": jobs.pull_workers(),
         "cfg": get_settings(),
         "mirror_root": runtime.mirror_root(),
         "protection_root": runtime.protection_root(),
@@ -72,6 +74,13 @@ async def settings_save(request: Request):
     for key in _TEXT_KEYS + schedule_keys:
         if key in form:
             db.set_setting(key, str(form.get(key)).strip())
+    if "pull_workers" in form:
+        try:
+            workers = int(str(form.get("pull_workers")).strip())
+        except ValueError:
+            workers = 0  # not a number: keep the stored value
+        if workers:
+            db.set_setting("pull_workers", str(max(1, min(8, workers))))
     for key in _SECRET_KEYS:
         value = str(form.get(key) or "").strip()
         if value:

@@ -147,7 +147,8 @@ def test_list_all_repos_keeps_old_keys_and_adds_new(gh: FakeGitHub, client: Test
     runtime.store_github_token(GOOD)
     repos = github.list_all_repos(include_forks=True, include_archived=True)
     assert [r["full_name"] for r in repos] == ["octo/alpha", "octo/secret", "acme/forked"]
-    assert repos[1] == {
+    # "id" is the numeric GitHub id; this fake API sends none.
+    assert {k: v for k, v in repos[1].items() if k != "id"} == {
         "full_name": "octo/secret", "private": 1, "fork": 0, "archived": 0,
         "default_branch": "main", "has_wiki": False, "owner": "octo",
         "description": "", "size_kb": 5, "pushed_at": "2026-09-01T10:00:00Z",

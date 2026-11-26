@@ -1,0 +1,39 @@
+{# One running job. Needs `lj` (see viewhelpers.live_jobs). `full_log` shows every line. #}
+{% set snap = lj.snap %}
+<div class="live-job">
+  <div class="live-head">
+    <span class="pill running">running</span>
+    <span class="live-title">{{ lj.label }}</span>
+    <span class="live-elapsed" title="Started {{ lj.job.started_at | fmt_time }}">{{ lj.elapsed | fmt_duration }}</span>
+    <span class="spacer"></span>
+    {% if not full_log %}<a href="/jobs/{{ lj.job.id }}">Open the job</a>{% endif %}
+  </div>
+  {% if snap %}
+  <div class="bar" role="progressbar" aria-label="Progress of {{ lj.label }}"
+       aria-valuemin="0" aria-valuemax="{{ snap.total }}" aria-valuenow="{{ snap.done }}"
+       aria-valuetext="{{ snap.done }} of {{ snap.total }} done">
+    <span style="width: {{ snap.percent }}%"></span>
+  </div>
+  <div class="live-counts">
+    <span><b>{{ snap.done }}</b> of <b>{{ snap.total }}</b> done</span>
+    <span class="c-ok"><b>{{ snap.ok }}</b> ok</span>
+    {% if snap.warn %}<span class="c-warn"><b>{{ snap.warn }}</b> with warnings</span>{% endif %}
+    <span class="{{ 'c-fail' if snap.failed else 'c-none' }}"><b>{{ snap.failed }}</b> failed</span>
+    {% if snap.skipped %}<span class="c-none"><b>{{ snap.skipped }}</b> skipped</span>{% endif %}
+  </div>
+  <div class="live-now">
+    <span class="live-label">Now</span>
+    {% for name in snap.running %}<span class="chip">{{ name }}</span>
+    {% else %}<span class="muted">{{ 'Waiting for the first repository.' if snap.done == 0 else 'Finishing.' }}</span>
+    {% endfor %}
+  </div>
+  {% set lines = snap.lines if full_log else snap.lines[-6:] %}
+  {% if lines %}
+  <div class="detail-log live-log{{ ' full' if full_log }}" aria-live="off"
+       aria-label="Log so far">{{ lines | join('\n') }}</div>
+  {% endif %}
+  {% else %}
+  <div class="bar indeterminate" role="progressbar" aria-label="{{ lj.label }} is in work"><span></span></div>
+  <div class="live-counts"><span class="muted">This job gives no step count. The page shows the result when the job is done.</span></div>
+  {% endif %}
+</div>

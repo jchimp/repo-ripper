@@ -5,26 +5,35 @@
 <h1>Dashboard</h1>
 {% include "_token_health.html" %}
 
-<div class="grid stats" style="margin-top:20px">
+{% include "_health_line.html" %}
+
+<div class="grid stats">
   <div class="card">
     <div class="k">Repositories</div>
     <div class="v">{{ repo_count }}</div>
   </div>
   <div class="card">
-    <div class="k">Enabled</div>
-    <div class="v">{{ enabled_count }}</div>
+    <div class="k">Backup on</div>
+    <div class="v">{{ enabled_count }}{% if repo_count %} <small>of {{ repo_count }}</small>{% endif %}</div>
   </div>
   <div class="card">
     <div class="k">Mirror size</div>
     <div class="v">{{ total_size | fmt_size }}</div>
   </div>
   <div class="card">
-    <div class="k">Last run</div>
-    <div class="v" style="font-size:16px">
-      {% if jobs %}{{ jobs[0].job_type }} <small>· {{ jobs[0].started_at | fmt_time }}</small>{% else %}—{% endif %}
+    <div class="k">Last pull job</div>
+    <div class="v v-small">
+      {% if history %}{{ history[-1].recorded_at | ago }}
+      <small>· {{ history[-1].ok_count }} ok, {{ history[-1].fail_count }} failed</small>
+      {% else %}<span class="muted">none yet</span>{% endif %}
     </div>
   </div>
 </div>
+
+{# The inner element polls every 2 seconds, only while a job runs. #}
+<section class="live-region" aria-live="polite" aria-label="Running jobs">
+  {% include "_live_panel.html" %}
+</section>
 
 <div class="controls">
   {% for spec in job_specs %}
@@ -34,16 +43,67 @@
     <div class="next">next · {{ next_runs[jt] or 'manual only' }}</div>
     <form method="post" action="/run/{{ jt }}" hx-post="/run/{{ jt }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if jt in running_types %}
+      <button type="submit" class="primary" disabled>Running</button>
+      {% else %}
       <button type="submit" class="primary">Run now</button>
+      {% endif %}
     </form>
     <div class="desc">{{ spec.description }}</div>
   </div>
   {% endfor %}
 </div>
 
+<div class="dash-cols">
+  <div class="panel" id="attention">
+    <div class="panel-head">
+      <h2>Needs attention</h2>
+      {% if health.attention %}<span class="count">{{ health.attention | length + health.attention_more }}</span>{% endif %}
+    </div>
+    <div class="panel-body">
+      {% if health.attention %}
+      <ul class="attn-list">
+        {% for item in health.attention %}
+        <li>
+          <span class="pill {{ 'skipped' if item.kind == 'stale' else item.kind }}">{{ item.label }}</span>
+          <a class="repo-name" href="/repos/{{ item.repo.id }}">{{ item.repo.full_name }}</a>
+          <span class="attn-text">{{ item.text }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if health.attention_more %}
+      <div class="panel-foot"><a href="/repos?sort=status">{{ health.attention_more }} more. Open the list with the problems first.</a></div>
+      {% endif %}
+      {% elif repo_count %}
+      <div class="empty">No failed or stale repository.</div>
+      {% else %}
+      <div class="empty">No repositories yet. Run "Scan GitHub", then "Pull mirrors".</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Mirror size over time</h2>
+      <span class="spacer"></span>
+      {% if chart %}<span class="mono-cell muted">{{ history | length }} pull jobs</span>{% endif %}
+    </div>
+    <div class="panel-body pad">
+      {% if chart %}
+      {{ chart }}
+      {% else %}
+      <div class="empty chart-empty">
+        The chart needs 2 completed pull jobs. There {{ 'is 1' if history | length == 1 else 'are 0' }} now.
+        Each "Pull mirrors" run adds one point.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
 <div class="panel">
   <div class="panel-head"><h2>Recent jobs</h2></div>
-  <div class="panel-body">
+  <div class="panel-body table-scroll">
     {% if jobs %}
     <table>
       <thead>
@@ -54,9 +114,9 @@
         <tr>
           <td class="mono-cell">{{ j.job_type }}</td>
           <td><span class="pill {{ j.status }}">{{ j.status }}</span></td>
-          <td class="mono-cell">{{ j.started_at | fmt_time }}</td>
+          <td class="mono-cell">{{ j.started_at | ago }}</td>
           <td class="mono-cell">
-            {%- if j.finished_at -%}{{ '%.0fs' % (j.finished_at - j.started_at) }}{%- else -%}—{%- endif -%}
+            {%- if j.finished_at -%}{{ (j.finished_at - j.started_at) | fmt_duration }}{%- else -%}—{%- endif -%}
           </td>
           <td>{{ j.summary or '—' }}</td>
           <td><a href="/jobs/{{ j.id }}">details</a></td>
@@ -65,7 +125,7 @@
       </tbody>
     </table>
     {% else %}
-    <div class="empty">No jobs yet. Run a scan to discover your repositories.</div>
+    <div class="empty">No jobs yet. Run "Scan GitHub" to find your repositories.</div>
     {% endif %}
   </div>
 </div>

@@ -1,0 +1,49 @@
+{# The conversation of an issue or pull request. Needs `body_html`, `author`, `opened_at`, `events`. #}
+<ol class="timeline">
+  <li class="event">
+    <div class="event-head"><strong>{{ author }}</strong> opened this
+      <span class="when" title="{{ opened_at | when }}">{{ opened_at | ago_text }}</span></div>
+    {% if body_html %}
+    {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
+    <div class="md event-body">{{ body_html }}</div>
+    {% else %}
+    <div class="event-body muted">No description.</div>
+    {% endif %}
+  </li>
+  {% for e in events %}
+  {% if e.kind in ('merged', 'closed') %}
+  <li class="event marker st-{{ e.kind }}">
+    <div class="event-head">
+      {% if e.user != 'unknown' %}<strong>{{ e.user }}</strong> {{ e.kind }} this{% else %}This was {{ e.kind }}{% endif %}
+      <span class="when" title="{{ e.when | when }}">{{ e.when | ago_text }}</span>
+    </div>
+  </li>
+  {% else %}
+  <li class="event {{ 'review st-' ~ (e.state | lower) if e.kind == 'review' }}">
+    <div class="event-head">
+      <strong>{{ e.user }}</strong>
+      {% if e.kind == 'review' %}
+        {{ {'APPROVED': 'approved these changes', 'CHANGES_REQUESTED': 'requested changes', 'DISMISSED': 'wrote a review that was dismissed'}.get(e.state, 'reviewed') }}
+      {% elif e.kind == 'review_comment' %}commented on <span class="path">{{ e.path }}</span>
+      {% else %}commented{% endif %}
+      {% if e.when %}<span class="when" title="{{ e.when | when }}">{{ e.when | ago_text }}</span>{% endif %}
+    </div>
+    {% if e.kind == 'review_comment' and e.hunk %}
+    <div class="code-view">
+      <table class="diff hunk-quote">
+        <tbody>
+          {% for kind, text in e.hunk -%}
+          <tr class="{{ {'+': 'add', '-': 'del', '@': 'hunk'}.get(kind, 'ctx') }}"><td class="src">{{ text }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if e.html %}
+    {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
+    <div class="md event-body">{{ e.html }}</div>
+    {% endif %}
+  </li>
+  {% endif %}
+  {% endfor %}
+</ol>

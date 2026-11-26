@@ -1,0 +1,27 @@
+{# One line that answers "is the backup healthy?". Needs `health`, `repo_count`. #}
+{% if repo_count == 0 %}
+<div class="health idle" role="status">
+  <span class="health-dot"></span>
+  <span class="health-main">No repositories yet.</span>
+  <span class="health-sub">Run "Scan GitHub" to find them, then "Pull mirrors".</span>
+</div>
+{% elif health.all_good %}
+<div class="health good" role="status">
+  <span class="health-dot"></span>
+  <span class="health-main">All good.</span>
+  <span class="health-sub">Each repository with the backup on has a good mirror.</span>
+</div>
+{% else %}
+<div class="health {{ 'bad' if health.failing or health.verify_failed else 'attn' }}" role="status">
+  <span class="health-dot"></span>
+  <span class="health-main">{{ 'Problems found.' if health.failing or health.verify_failed else 'Attention.' }}</span>
+  <span class="health-items">
+    {% if health.failing %}<a class="h-fail" href="/repos?status=error&amp;backup=on"><b>{{ health.failing }}</b> failing</a>{% endif %}
+    {% if health.verify_failed %}<a class="h-fail" href="/repos?flag=verify"><b>{{ health.verify_failed }}</b> verify failed</a>{% endif %}
+    {% if health.warn %}<a class="h-warn" href="/repos?status=warn"><b>{{ health.warn }}</b> with warnings</a>{% endif %}
+    {% if health.never %}<a class="h-muted" href="/repos?status=pending&amp;backup=on"><b>{{ health.never }}</b> never synced</a>{% endif %}
+    {% if health.stale %}<a class="h-warn" href="#attention"><b>{{ health.stale }}</b> stale</a>{% endif %}
+    {% if health.gone %}<a class="h-warn" href="/repos?flag=gone"><b>{{ health.gone }}</b> gone upstream</a>{% endif %}
+  </span>
+</div>
+{% endif %}

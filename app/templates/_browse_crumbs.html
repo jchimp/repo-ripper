@@ -1,0 +1,7 @@
+{# Path breadcrumb. Needs `crumbs` and `u`. The last part is the current page. #}
+<nav class="crumbs" aria-label="Path">
+  <a href="{{ u.tree('') }}">{{ repo.full_name.split('/')[-1] }}</a>
+  {%- for name, p in crumbs %}<span class="sep">/</span>
+  {%- if loop.last %}<span class="here">{{ name }}</span>{% else %}<a href="{{ u.tree(p) }}">{{ name }}</a>{% endif %}
+  {%- endfor %}
+</nav>

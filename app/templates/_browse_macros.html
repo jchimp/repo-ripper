@@ -1,0 +1,20 @@
+{# Small shared pieces of the pull request, issue and release pages. #}
+
+{% macro badge(pair) -%}
+<span class="state-badge st-{{ pair[1] }}">{{ pair[0] }}</span>
+{%- endmacro %}
+
+{# `label_color` returns "#rrggbb" only for six hex digits, so the style value is safe. #}
+{% macro labels(items) -%}
+{% for lb in items or [] if lb is mapping and lb.name -%}
+{% set color = lb.color | label_color -%}
+<span class="label"{% if color %} style="--label: {{ color }}"{% endif %}>{{ lb.name }}</span>
+{% endfor %}
+{%- endmacro %}
+
+{# A link to GitHub. Only an https address from the captured data becomes a link. #}
+{% macro github_link(url) -%}
+{% if url is string and url.startswith('https://') -%}
+<a class="ext" href="{{ url }}" rel="noopener noreferrer nofollow">Open on GitHub</a>
+{%- endif %}
+{%- endmacro %}

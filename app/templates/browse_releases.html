@@ -1,0 +1,44 @@
+{% extends "browse_base.html" %}
+{% import "_browse_macros.html" as mac %}
+{% block browse %}
+{% if releases %}
+<p class="hint">repo-ripper stores the name and the size of each release asset. It does not store the asset files.</p>
+{% for item in releases %}
+{% set rel = item.rel %}
+<div class="panel release">
+  <div class="panel-head">
+    <h2>{{ rel.name or rel.tag_name or '(no name)' }}</h2>
+    {% if rel.prerelease %}<span class="tag">pre-release</span>{% endif %}
+    {% if rel.draft %}<span class="tag">draft</span>{% endif %}
+    <span class="spacer"></span>
+    {% if rel.tag_name %}
+      {% if item.tag_local %}<a class="repo-name" href="{{ u.code(rev=rel.tag_name) }}">{{ rel.tag_name }}</a>
+      {% else %}<span class="repo-name" title="This tag is not in the mirror.">{{ rel.tag_name }}</span>{% endif %}
+    {% endif %}
+    {% if rel.published_at or rel.created_at %}
+    <span class="when" title="{{ (rel.published_at or rel.created_at) | when }}">{{ (rel.published_at or rel.created_at) | ago_text }}</span>
+    {% endif %}
+  </div>
+  <div class="panel-body pad">
+    {% if item.html %}
+    {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
+    <div class="md">{{ item.html }}</div>
+    {% else %}
+    <div class="muted">No release notes.</div>
+    {% endif %}
+    {% if item.assets %}
+    <h3 class="assets-h">Assets (names only, the files are not stored)</h3>
+    <ul class="assets">
+      {% for a in item.assets %}
+      <li><span class="repo-name">{{ a.name or '(no name)' }}</span> <span class="muted">{{ a.size | fmt_size }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {{ mac.github_link(rel.html_url) }}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="panel"><div class="empty">The captured metadata has no releases for this repository.</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{# The polled part of the job page. No hx-trigger when the job is done. #}
+<div id="job-live"{% if lj %} class="panel live-panel"
+     hx-get="/jobs/{{ job.id }}/live" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% if lj %}
+  <div class="panel-head"><h2>Progress</h2></div>
+  <div class="panel-body pad">
+    {% set full_log = true %}
+    {% include "_live_job.html" %}
+  </div>
+  {% else %}
+  <div class="empty">The job is done. The page loads the result now.</div>
+  {% endif %}
+</div>

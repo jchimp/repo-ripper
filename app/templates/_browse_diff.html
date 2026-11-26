@@ -1,0 +1,46 @@
+{# A parsed diff. Needs `diff` (gitread.Diff), `diff_rev` (sha for the file links), `collapse_at`. #}
+<div class="diff-summary">
+  <strong>{{ diff.total_files }}</strong> {{ 'file' if diff.total_files == 1 else 'files' }} changed
+  <span class="add">+{{ diff.added }}</span> <span class="del">-{{ diff.deleted }}</span>
+</div>
+{% if diff.too_large %}
+<div class="notice warn" role="status">
+  The diff is too large to show completely.
+  {% if diff.total_files > diff.files | length %}The list shows the first {{ diff.files | length }} of {{ diff.total_files }} files.{% endif %}
+  Some files are listed without their lines. Use git on the mirror to see all of it.
+</div>
+{% endif %}
+{% for f in diff.files %}
+<details class="diff-file" {{ 'open' if f.line_count <= collapse_at }}>
+  <summary>
+    <span class="status st-{{ f.status }}">{{ f.status }}</span>
+    <span class="path">{% if f.status == 'renamed' %}{{ f.old_path }} → {% endif %}{{ f.path }}</span>
+    {% if f.added is not none %}<span class="add">+{{ f.added }}</span> <span class="del">-{{ f.deleted }}</span>{% endif %}
+  </summary>
+  {% if f.status != 'deleted' %}
+  <div class="diff-tools"><a href="{{ u.blob(f.path, rev=diff_rev) }}">Open the file</a></div>
+  {% endif %}
+  {% if f.omitted %}
+  <div class="empty">{{ f.omitted }}</div>
+  {% elif f.binary %}
+  <div class="empty">Binary file. There is no text diff.</div>
+  {% elif not f.hunks %}
+  <div class="empty">No line changed (an empty file, a rename, or a mode change).</div>
+  {% else %}
+  <div class="code-view">
+    <table class="diff">
+      <tbody>
+        {% for h in f.hunks %}
+        <tr class="hunk"><td class="ln"></td><td class="ln"></td><td class="src">{{ h.header }}</td></tr>
+        {% for l in h.lines -%}
+        <tr class="{{ {'+': 'add', '-': 'del', ' ': 'ctx'}.get(l.kind, 'note') }}"><td class="ln">{{ l.old_no or '' }}</td><td class="ln">{{ l.new_no or '' }}</td><td class="src">{{ l.kind }}{{ l.text }}</td></tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</details>
+{% else %}
+<div class="panel"><div class="empty">No file changed.</div></div>
+{% endfor %}
