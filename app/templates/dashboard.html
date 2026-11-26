@@ -36,6 +36,7 @@
     <div class="name">{{ meta[jt][0] }}</div>
     <div class="next">next · {{ next_runs[jt] or 'not scheduled' }}</div>
     <form method="post" action="/run/{{ jt }}" hx-post="/run/{{ jt }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="primary">Run now</button>
     </form>
     <div class="desc">{{ meta[jt][1] }}</div>

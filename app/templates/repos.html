@@ -9,6 +9,7 @@
     <h2>{{ repos | length }} discovered</h2>
     <span class="spacer"></span>
     <form method="post" action="/run/scan" hx-post="/run/scan">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="ghost">Rescan GitHub</button>
     </form>
   </div>

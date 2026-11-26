@@ -18,6 +18,7 @@ Blocking git/rsync work runs in a thread pool; the app stays responsive during s
 ```bash
 cp .env.example .env
 # edit .env: ADMIN_PASSWORD, SECRET_KEY, GITHUB_TOKEN, TZ
+# (the app refuses to start while the password or secret is a placeholder)
 # edit docker-compose.yml: point the two NAS mounts at your shares
 docker compose up -d --build
 ```
@@ -67,6 +68,31 @@ Mirrors are plain bare repos. To restore any project:
 ```bash
 git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
 ```
+
+## Security
+
+- The app does not start while `ADMIN_PASSWORD` or `SECRET_KEY` holds a
+  placeholder, or while `SECRET_KEY` is shorter than 32 characters.
+- Five wrong sign-in attempts from one address lock that address out for five
+  minutes. Behind a reverse proxy, all clients share the proxy address.
+- Every form and HTMX request carries a CSRF token.
+- Stored secrets (the Telegram bot token) are never sent back to the browser.
+- `GET /health` is public and returns `{"status": "ok"}`; Docker uses it as
+  the container healthcheck.
+
+## Development
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt   # Windows: .venv\Scripts\pip
+.venv/bin/ruff check .
+.venv/bin/pytest
+```
+
+Layout: `app/routes/` has one module per page area; add a new router to the
+private tuple in `app/main.py` and it needs a signed-in session. Schema
+changes are new numbered files in `app/migrations/`, applied once at start.
+The UI has a light/dark toggle in the top bar; the choice is kept per browser.
 
 ## Notes
 

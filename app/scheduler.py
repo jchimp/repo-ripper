@@ -19,6 +19,8 @@ _SCHEDULE_KEYS = {
     "protection": "schedule_protection",
 }
 
+JOB_TYPES = tuple(_SCHEDULE_KEYS)
+
 scheduler = BackgroundScheduler(
     executors={"default": ThreadPoolExecutor(4)},
     job_defaults={"coalesce": True, "max_instances": 1, "misfire_grace_time": 3600},

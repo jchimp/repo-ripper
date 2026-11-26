@@ -13,6 +13,7 @@
 {% if saved %}<div class="saved" style="margin-top:16px">Settings saved. Schedules re-applied.</div>{% endif %}
 
 <form method="post" action="/settings" style="margin-top:20px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <div class="form-section">
     <h2>Discovery</h2>
@@ -59,8 +60,15 @@
     <div class="two-col" style="margin-top:8px">
       <div class="field">
         <label for="telegram_bot_token">Bot token</label>
-        <input type="text" id="telegram_bot_token" name="telegram_bot_token"
-               value="{{ s.get('telegram_bot_token', '') }}" placeholder="123456:ABC-DEF...">
+        <input type="password" id="telegram_bot_token" name="telegram_bot_token"
+               autocomplete="off" value=""
+               placeholder="{{ 'Stored. Leave empty to keep it.' if secrets_set.telegram_bot_token else '123456:ABC-DEF...' }}">
+        {% if secrets_set.telegram_bot_token %}
+        <div class="check" style="margin-top:8px">
+          <input type="checkbox" id="telegram_bot_token_clear" name="telegram_bot_token_clear">
+          <label for="telegram_bot_token_clear">Remove the stored token</label>
+        </div>
+        {% endif %}
       </div>
       <div class="field">
         <label for="telegram_chat_id">Chat ID</label>

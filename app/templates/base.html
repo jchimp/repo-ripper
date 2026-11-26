@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}repo-ripper{% endblock %}</title>
+  <meta name="color-scheme" content="dark light">
+  <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
-<body>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
   {% if user %}
   <header class="topbar">
     <a class="wordmark" href="/">repo<span class="sep">·</span>ripper</a>
@@ -18,7 +20,12 @@
     </nav>
     <span class="spacer"></span>
     <span class="who">{{ user }}</span>
-    <a href="/logout" class="nav" style="color:var(--muted);font-size:13px">Sign out</a>
+    <button type="button" class="theme-toggle" data-theme-toggle
+            aria-label="Switch between light and dark theme" title="Light / dark"></button>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="link">Sign out</button>
+    </form>
   </header>
   {% endif %}
   <main>

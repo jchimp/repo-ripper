@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign in — repo-ripper</title>
+  <meta name="color-scheme" content="dark light">
+  <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -13,6 +15,7 @@
       <div class="sub">Mirror your GitHub to the NAS.</div>
       {% if error %}<div class="error">{{ error }}</div>{% endif %}
       <form method="post" action="/login">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="field">
           <label for="username">Username</label>
           <input type="text" id="username" name="username" autocomplete="username" autofocus>
@@ -23,6 +26,8 @@
         </div>
         <button type="submit" class="primary">Sign in</button>
       </form>
+      <button type="button" class="theme-toggle" data-theme-toggle
+            aria-label="Switch between light and dark theme" title="Light / dark"></button>
     </div>
   </div>
 </body>
