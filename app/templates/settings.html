@@ -13,6 +13,7 @@
 {% if saved %}<div class="saved" style="margin-top:16px">Settings saved. Schedules re-applied.</div>{% endif %}
 
 <form method="post" action="/settings" style="margin-top:20px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <div class="form-section">
     <h2>Discovery</h2>
@@ -28,25 +29,21 @@
       Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
       timezone <span class="mono-cell">{{ cfg.tz }}</span>
     </div>
+    {% for spec in job_specs %}
     <div class="field cron">
-      <label for="schedule_scan">Scan GitHub</label>
-      <input type="text" id="schedule_scan" name="schedule_scan" value="{{ s.get('schedule_scan', '') }}">
+      <label for="{{ spec.schedule_key }}">{{ spec.label }}</label>
+      <input type="text" id="{{ spec.schedule_key }}" name="{{ spec.schedule_key }}"
+             value="{{ s.get(spec.schedule_key, spec.default_cron) }}">
     </div>
-    <div class="field cron">
-      <label for="schedule_pull">Pull mirrors</label>
-      <input type="text" id="schedule_pull" name="schedule_pull" value="{{ s.get('schedule_pull', '') }}">
-    </div>
-    <div class="field cron">
-      <label for="schedule_protection">Protection copy</label>
-      <input type="text" id="schedule_protection" name="schedule_protection" value="{{ s.get('schedule_protection', '') }}">
-    </div>
+    {% endfor %}
+    <div class="hint">Leave a schedule empty to run that job by hand only.</div>
   </div>
 
   <div class="form-section">
     <h2>Protection copy</h2>
     <div class="hint" style="margin-bottom:12px">
-      From <span class="mono-cell">{{ cfg.mirror_root }}</span>
-      to <span class="mono-cell">{{ cfg.protection_root }}</span>
+      From <span class="mono-cell">{{ mirror_root }}</span>
+      to <span class="mono-cell">{{ protection_root }}</span>
     </div>
     {{ checkbox('protection_delete', 'Delete extras on the copy (--delete: exact replica)', s) }}
   </div>
@@ -59,8 +56,15 @@
     <div class="two-col" style="margin-top:8px">
       <div class="field">
         <label for="telegram_bot_token">Bot token</label>
-        <input type="text" id="telegram_bot_token" name="telegram_bot_token"
-               value="{{ s.get('telegram_bot_token', '') }}" placeholder="123456:ABC-DEF...">
+        <input type="password" id="telegram_bot_token" name="telegram_bot_token"
+               autocomplete="off" value=""
+               placeholder="{{ 'Stored. Leave empty to keep it.' if secrets_set.telegram_bot_token else '123456:ABC-DEF...' }}">
+        {% if secrets_set.telegram_bot_token %}
+        <div class="check" style="margin-top:8px">
+          <input type="checkbox" id="telegram_bot_token_clear" name="telegram_bot_token_clear">
+          <label for="telegram_bot_token_clear">Remove the stored token</label>
+        </div>
+        {% endif %}
       </div>
       <div class="field">
         <label for="telegram_chat_id">Chat ID</label>

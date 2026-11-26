@@ -6,16 +6,15 @@ exposed as a setting. Turn it off to make the copy append-only at the cost of
 letting deleted repos linger.
 """
 import subprocess
-from pathlib import Path
 
-from .config import get_settings
+from . import runtime
 
 
 def run_protection_copy(delete: bool) -> tuple[bool, str]:
-    s = get_settings()
-    src = s.mirror_root.rstrip("/") + "/"
-    dst = s.protection_root.rstrip("/") + "/"
-    Path(s.protection_root).mkdir(parents=True, exist_ok=True)
+    # Trailing slash: rsync copies the contents of src, not the folder itself.
+    src = runtime.mirror_root().as_posix().rstrip("/") + "/"
+    dst = runtime.protection_root().as_posix().rstrip("/") + "/"
+    runtime.protection_root().mkdir(parents=True, exist_ok=True)
 
     cmd = ["rsync", "-a", "--stats", "--human-readable"]
     if delete:

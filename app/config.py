@@ -8,6 +8,14 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Values shipped in .env.example or used as old code defaults. The app refuses
+# to start with these, because the UI can reach private repositories.
+_PLACEHOLDER_PASSWORDS = {"", "changeme", "change-me-now"}
+_PLACEHOLDER_SECRETS = {
+    "change-this-to-a-long-random-string",
+    "replace-with-a-long-random-hex-string",
+}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -49,6 +57,15 @@ class Settings(BaseSettings):
     schedule_scan: str = "0 3 * * *"        # discover repos, 03:00 daily
     schedule_pull: str = "30 3 * * *"       # mirror pulls, 03:30 daily
     schedule_protection: str = "0 5 * * 0"  # protection copy, 05:00 Sundays
+
+    def insecure_defaults(self) -> list[str]:
+        """Return the env values that still hold a known placeholder."""
+        problems: list[str] = []
+        if self.admin_password in _PLACEHOLDER_PASSWORDS:
+            problems.append("ADMIN_PASSWORD is empty or a placeholder")
+        if self.secret_key in _PLACEHOLDER_SECRETS or len(self.secret_key) < 32:
+            problems.append("SECRET_KEY is a placeholder or shorter than 32 characters")
+        return problems
 
 
 @lru_cache

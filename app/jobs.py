@@ -5,14 +5,14 @@ A blocked run is recorded as 'skipped' rather than silently dropped.
 """
 import threading
 import time
+from collections import defaultdict
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from . import db, github, mirror, notify, protection
 
-_LOCKS = {
-    "scan": threading.Lock(),
-    "pull": threading.Lock(),
-    "protection": threading.Lock(),
-}
+# One lock per job key, created on first use.
+_LOCKS: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)
 
 
 def _skip(job_type: str) -> None:
@@ -108,8 +108,34 @@ def run_protection_job() -> None:
         lock.release()
 
 
-JOBS = {
-    "scan": run_scan_job,
-    "pull": run_pull_job,
-    "protection": run_protection_job,
-}
+@dataclass(frozen=True)
+class JobSpec:
+    """One schedulable job. The dashboard, the settings page and the scheduler
+    are all built from JOBS, so a new job is one `register()` call."""
+    key: str            # also the job_runs.job_type and the lock name
+    label: str          # button / heading text
+    description: str    # one line under the button
+    run: Callable[[], None]
+    default_cron: str   # used when the settings table has no schedule yet
+
+    @property
+    def schedule_key(self) -> str:
+        return f"schedule_{self.key}"
+
+
+JOBS: dict[str, JobSpec] = {}
+
+
+def register(spec: JobSpec) -> None:
+    JOBS[spec.key] = spec
+
+
+register(JobSpec("scan", "Scan GitHub",
+                 "Discover repositories and enrol new ones.",
+                 run_scan_job, "0 3 * * *"))
+register(JobSpec("pull", "Pull mirrors",
+                 "git --mirror every enabled repo to the NAS.",
+                 run_pull_job, "30 3 * * *"))
+register(JobSpec("protection", "Protection copy",
+                 "rsync the mirror share to the second share.",
+                 run_protection_job, "0 5 * * 0"))
