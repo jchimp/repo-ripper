@@ -104,16 +104,47 @@ Do one of these:
 
 ## The jobs
 
-- **Scan** — lists repos via the GitHub API and enrols new ones. Honours the
-  fork/archived toggles.
-- **Pull** — `git clone --mirror` on first sight, then `git remote update
-  --prune` thereafter, for every *enabled* repo. Best-effort LFS and wiki.
-- **Protection copy** — `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`,
-  optionally `--delete` for an exact replica.
-- **Capture metadata**: downloads pull requests, issues, comments and releases
+- **Scan GitHub** lists the repositories through the GitHub API and adds the
+  new ones. It obeys the fork and archived settings. It also finds renamed
+  repositories and repositories that are gone upstream (see below).
+- **Pull mirrors** makes a `git clone --mirror` the first time, then runs
+  `git remote update --prune`, for each repository that has the backup on. It
+  mirrors 4 repositories at the same time. You can set 1 to 8 in Settings,
+  section "Sync". One repository that fails does not stop the others.
+- **Protection copy** runs `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`.
+  With `--delete` on, the copy is an exact replica.
+- **Verify mirrors** runs `git fsck` on each mirror on disk, one time each
+  week. A mirror that fails gets the tag `verify failed`.
+- **Capture metadata** downloads pull requests, issues, comments and releases
   from the GitHub API to JSON files next to each mirror. See [Metadata](#metadata).
 
-Each has its own cron schedule (Settings) and a **Run now** button (Dashboard).
+Each job has a cron schedule (Settings) and a **Run now** button (Dashboard).
+While a job runs, the dashboard and the job page show the progress, the
+repositories in work, and the log. The pages update every 2 seconds.
+
+### Repository status
+
+| Status | Meaning |
+| --- | --- |
+| `ok` | The last sync was good. |
+| `warn` | The mirror is updated, but a part failed. Example: the Git LFS fetch. The repository page shows the reason. |
+| `error` | The last sync failed. The mirror on disk is not changed. |
+| `pending` | No sync yet. |
+| `running` | A sync is in work now. |
+
+A repository can also have these tags:
+
+- `gone upstream`: the repository is not in the GitHub listing. It was
+  deleted, or the token can no longer see it. The mirror stays on disk and
+  the pull job skips the repository. If the repository comes back, the next
+  scan removes the tag. repo-ripper never deletes a mirror.
+- `verify failed`: `git fsck` found a problem in the mirror. If GitHub still
+  has the repository, move the mirror folder away and select **Sync now**.
+
+The Repositories page has search, filters, sort and actions for the checked
+rows (backup on, backup off, sync now). The address of a filtered list can be
+kept as a bookmark. Select a repository name to see its facts, its sync
+history, the last error in full, and the restore command.
 
 ## Watch public repositories
 
@@ -305,6 +336,28 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
   unless you clear "Turn on backup for newly found repositories" in Settings.
 - A manual run and a scheduled run of the same job can't overlap — the second is
   recorded as `skipped`.
+- **Sync now** on one repository, or on the checked rows, is refused while the
+  full pull job runs. The pull job syncs these repositories anyway.
+- A renamed or moved repository keeps its history: the scan knows it by its
+  GitHub id, gives the entry the new name, and moves the mirror folder (and
+  the `.wiki.git` and `.meta` folders). If a folder with the new name exists,
+  nothing is moved, the job log says so, and the next pull writes to the new
+  name.
+- If GitHub returns an empty list while repositories are known, the scan
+  marks nothing as gone upstream and says so in the job summary. The usual
+  cause is a token problem.
+- With "Include archived" or "Include forks" off, the scan cannot tell a
+  repository that became archived (or a fork) from one that is gone, and can
+  mark it `gone upstream`. Its mirror stays on disk.
+- A failed Git LFS fetch gives the status `warn` with the reason. If the
+  server has no `git-lfs`, turn "Fetch Git LFS objects" off.
+- A network error during a clone or update is tried again one time.
+- A clone runs in a `<name>.git.partial` folder and gets its final name only
+  when it is complete. A clone that was stopped does not block the next run.
+- A job that a restart stopped shows as `interrupted`. Run it again.
+- The app keeps the newest 200 history rows for each repository.
+- The Telegram message of a pull job with failures lists the failed
+  repositories (10 names at most).
 - Bad cron strings are ignored on save; the previous schedule stays in effect.
 - Ports, image, and mounts are all in `docker-compose.yml`.
 
