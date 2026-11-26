@@ -314,7 +314,8 @@ button.link:hover { color: var(--text); text-decoration: underline; }
   main { padding: 20px 14px 48px; }
 }
 
-/* ===== setup-wizard =================================================   Setup wizard, folder browser, token sections, token-health notice. */
+/* ===== setup-wizard ========================================================
+   Setup wizard, folder browser, token sections, token-health notice. */
 
 .lead { color: var(--muted); font-size: 14px; max-width: 76ch; margin: 0 0 18px; }
 
@@ -428,7 +429,8 @@ select:focus-visible, input[type=checkbox]:focus-visible {
   .kv dd { margin-bottom: 8px; }
   .picker-actions { align-items: stretch; flex-direction: column; }
   .repo-scroll th:nth-child(3), .repo-scroll td:nth-child(3) { display: none; }
-=======
+}
+
 /* === watched-repos ========================================================
    Watch panel on the Repositories page, the `watched` tag and the
    "Stop watching" confirmation in a repository row. */
