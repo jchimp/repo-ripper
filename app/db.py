@@ -251,6 +251,9 @@ def record_watch_owner_scan(owner_id: int, error: str | None) -> None:
         conn.execute(
             "UPDATE watch_owners SET last_scan_at = ?, last_error = ? WHERE id = ?",
             (time.time(), error, owner_id),
+        )
+
+
 def toggle_repo_metadata(repo_id: int) -> None:
     """Switch the metadata capture of one repository on or off."""
     with get_conn() as conn:

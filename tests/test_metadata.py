@@ -39,8 +39,12 @@ def fill_demo(repo: FakeRepo) -> FakeRepo:
 def fake(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeGitHub]:
     """A fake GitHub wired into the client, and a mirror root in a temp folder."""
     monkeypatch.setenv("MIRROR_ROOT", str(tmp_path / "mirrors"))
+    # The token and the storage folders are read through the settings table,
+    # so each test needs a database, also the tests that start no app.
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     from app.config import get_settings
     get_settings.cache_clear()
+    db.init_db()
     gh = FakeGitHub()
     fill_demo(gh.add_repo(DEMO))
     monkeypatch.setattr(gh_client, "_transport", gh.transport())

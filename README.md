@@ -157,8 +157,9 @@ very large number of issues. Turn it on for a repository if you want it.
 
 ## Token
 
-A fine-grained PAT with read-only **Contents** + **Metadata** is enough; add the
-private repos you want it to reach. Classic PATs need the `repo` scope for
+A fine-grained PAT needs these read-only permissions: **Contents** and
+**Metadata** for the git mirrors, plus **Issues** and **Pull requests** for the
+metadata capture. Add the private repos you want it to reach. Classic PATs need the `repo` scope for
 private repos. The token is passed to git per-command via `http.extraHeader`, so
 it is never written into the mirrors' config on the NAS.
 
