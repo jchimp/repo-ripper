@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from . import db, github, mirror, notify, protection
+from . import db, github, mirror, notify, protection, setup_state
 
 # One lock per job key, created on first use.
 _LOCKS: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)
@@ -26,6 +26,8 @@ def run_scan_job() -> None:
         return _skip("scan")
     try:
         jid = db.start_job("scan")
+        # Keeps the token-health banner on the dashboard current. Never raises.
+        setup_state.refresh_token_check()
         try:
             repos = github.list_all_repos(
                 include_forks=db.get_bool("include_forks"),
@@ -38,6 +40,8 @@ def run_scan_job() -> None:
             return
 
         now = time.time()
+        # Applies to NEW rows only: a known repository keeps its switch.
+        auto_enable = db.get_bool("auto_enable_new", True)
         for r in repos:
             db.upsert_repo({
                 "full_name": r["full_name"],
@@ -47,7 +51,7 @@ def run_scan_job() -> None:
                 "default_branch": r["default_branch"],
                 "mirror_path": f"{r['full_name']}.git",
                 "discovered_at": now,
-            })
+            }, enabled=auto_enable)
         summary = f"Discovered {len(repos)} repositories"
         db.finish_job(jid, "ok", len(repos), 0, summary, "")
         notify.notify_job("scan", True, summary)

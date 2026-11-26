@@ -1,0 +1,23 @@
+{# Result of a token check. Context: check (dict from github.TokenCheck), warnings. #}
+{% if check and check.ok %}
+<dl class="kv">
+  <dt>Account</dt>
+  <dd><span class="mono-cell">{{ check.login }}</span>{% if check.name %} ({{ check.name }}){% endif %}</dd>
+  <dt>Token type</dt>
+  <dd>{{ {"classic": "Classic", "fine-grained": "Fine-grained"}.get(check.token_type, "Not known") }}</dd>
+  <dt>Scopes</dt>
+  <dd>
+    {% if check.scopes is none %}GitHub does not report scopes for this token type.
+    {% elif check.scopes %}<span class="mono-cell">{{ check.scopes | join(", ") }}</span>
+    {% else %}None{% endif %}
+  </dd>
+  <dt>Expiry</dt>
+  <dd>{% if check.expires_at %}<span class="mono-cell">{{ check.expires_at | fmt_time }}</span>{% else %}GitHub reports no expiry date.{% endif %}</dd>
+  <dt>Last check</dt>
+  <dd><span class="mono-cell">{{ check.checked_at | fmt_time }}</span></dd>
+</dl>
+{% for w in warnings %}<div class="notice warn">{{ w }}</div>{% endfor %}
+{% if not warnings %}<div class="notice ok">GitHub accepted the token.</div>{% endif %}
+{% elif check %}
+<div class="notice fail" role="alert">{{ check.error }}</div>
+{% endif %}

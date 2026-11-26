@@ -1,0 +1,87 @@
+{# Repository selection of the wizard. Context: repos, owners, error.
+   Filters are client-side (static/setup.js); without JavaScript all rows show. #}
+{% if error %}
+<div class="notice fail" role="alert">{{ error }}</div>
+<button type="button" class="ghost" hx-get="/setup/repos/list?refresh=1"
+        hx-target="#repo-picker" hx-swap="innerHTML">Try again</button>
+{% elif not repos %}
+<div class="notice warn">
+  The token can see no repository. Check the repository access of the token on GitHub.
+</div>
+<button type="button" class="ghost" hx-get="/setup/repos/list?refresh=1"
+        hx-target="#repo-picker" hx-swap="innerHTML">Get the list again</button>
+{% else %}
+<form method="post" action="/setup/repos">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="panel">
+    <div class="panel-head repo-filter">
+      <div class="rf-search">
+        <label for="rf-search">Search</label>
+        <input type="text" id="rf-search" data-filter="search" autocomplete="off"
+               placeholder="Name or description">
+      </div>
+      <div>
+        <label for="rf-owner">Owner</label>
+        <select id="rf-owner" data-filter="owner">
+          <option value="">All owners</option>
+          {% for o in owners %}<option value="{{ o }}">{{ o }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="rf-visibility">Visibility</label>
+        <select id="rf-visibility" data-filter="visibility">
+          <option value="">Public and private</option>
+          <option value="public">Public</option>
+          <option value="private">Private</option>
+        </select>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="rf-forks" data-filter="forks" checked>
+        <label for="rf-forks">Show forks</label>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="rf-archived" data-filter="archived" checked>
+        <label for="rf-archived">Show archived</label>
+      </div>
+    </div>
+    <div class="panel-head repo-select">
+      <button type="button" class="ghost" data-select="all">Select all shown</button>
+      <button type="button" class="ghost" data-select="none">Select none</button>
+      <span class="spacer"></span>
+      <span class="mono-cell" id="repo-count" aria-live="polite">{{ repos | selectattr("selected") | list | length }} of {{ repos | length }} selected</span>
+    </div>
+    <div class="panel-body repo-scroll">
+      <table>
+        <thead>
+          <tr><th>Backup</th><th>Repository</th><th>Last push</th><th class="num">Size</th></tr>
+        </thead>
+        <tbody>
+          {% for r in repos %}
+          <tr data-name="{{ r.full_name }}" data-owner="{{ r.owner }}"
+              data-search="{{ (r.full_name ~ ' ' ~ r.description) | lower }}"
+              data-visibility="{{ 'private' if r.private else 'public' }}"
+              data-fork="{{ r.fork }}" data-archived="{{ r.archived }}">
+            <td>
+              <input type="checkbox" name="repo" value="{{ r.full_name }}" id="repo-cb-{{ loop.index }}"
+                     aria-label="Back up {{ r.full_name }}" {{ 'checked' if r.selected }}>
+            </td>
+            <td>
+              <label class="repo-name" for="repo-cb-{{ loop.index }}">{{ r.full_name }}</label>
+              {% if r.private %}<span class="tag">private</span>{% endif %}
+              {% if r.fork %}<span class="tag">fork</span>{% endif %}
+              {% if r.archived %}<span class="tag">archived</span>{% endif %}
+              {% if r.description %}<div class="repo-desc">{{ r.description }}</div>{% endif %}
+            </td>
+            <td class="mono-cell">{{ r.pushed_at[:10] or "—" }}</td>
+            <td class="num">{{ (r.size_kb * 1024) | fmt_size }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <button type="submit" class="primary">Add selected and continue</button>
+  <button type="button" class="ghost" hx-get="/setup/repos/list?refresh=1"
+          hx-target="#repo-picker" hx-swap="innerHTML">Get the list again</button>
+</form>
+{% endif %}
