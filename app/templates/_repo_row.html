@@ -4,6 +4,7 @@
     {% if r.private %}<span class="tag">private</span>{% endif %}
     {% if r.fork %}<span class="tag">fork</span>{% endif %}
     {% if r.archived %}<span class="tag">archived</span>{% endif %}
+    {% if r.source == 'watched' %}<span class="tag tag-watched">watched</span>{% include "_watch_stop.html" %}{% endif %}
   </td>
   <td class="mono-cell">{{ r.last_sync_at | fmt_time }}</td>
   <td>

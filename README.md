@@ -113,6 +113,46 @@ Do one of these:
 
 Each has its own cron schedule (Settings) and a **Run now** button (Dashboard).
 
+## Watch public repositories
+
+You can mirror public repositories that are not yours. These repositories have
+the tag `watched` on the **Repositories** page.
+
+**Add one repository.** On the **Repositories** page, type the name or the URL
+in the field "Watch a public repository" and select **Add**. These forms are
+accepted:
+
+- `owner/name`
+- `https://github.com/owner/name` (also with `.git`, or with more path such as
+  `/tree/main`)
+- `git@github.com:owner/name.git`
+
+The app asks GitHub if the repository exists. If it does, the repository goes
+into the list and the next pull job makes the mirror.
+
+**Watch an owner.** Open "Watched owners", type the name of a user or an
+organisation, and select **Add owner**. Each scan job then adds the public
+repositories of that owner. Forks and archived repositories are added only if
+you set the two options. If you remove an owner, the scan job stops looking for
+new repositories of that owner. The repositories that are in the list stay
+there.
+
+**Stop watching.** Select "Stop watching" in the row of a watched repository
+and confirm. The app removes the repository from the list. The app does not
+delete the mirror: the files stay in `MIRROR_ROOT` and you can delete them by
+hand. Your own repositories cannot be removed; turn them off with the backup
+switch.
+
+**No token.** Public repositories do not need a token. Without a token the
+scan job skips your own repositories and still scans the watched owners.
+GitHub then permits only 60 API requests per hour for each IP address. When
+the limit is reached, the app shows the time at which the limit resets. Add a
+token to raise the limit to 5000 requests per hour.
+
+**Metadata.** Metadata capture (pull requests, issues, comments) is off for
+each watched repository when it is added, because a public project can have a
+very large number of issues. Turn it on for a repository if you want it.
+
 ## Token
 
 A fine-grained PAT with read-only **Contents** + **Metadata** is enough; add the
