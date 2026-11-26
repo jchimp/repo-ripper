@@ -1,0 +1,29 @@
+{% extends "browse_base.html" %}
+{% block browse %}
+<div class="panel">
+  <div class="panel-head"><h2 class="commit-subject">{{ commit.subject or '(no message)' }}</h2></div>
+  <div class="panel-body pad">
+    {% if commit.body %}<pre class="commit-body">{{ commit.body }}</pre>{% endif %}
+    <dl class="facts">
+      <dt>Commit</dt><dd class="sha">{{ commit.sha }}</dd>
+      <dt>Author</dt>
+      <dd>{{ commit.author_name }} <span class="muted">&lt;{{ commit.author_email }}&gt;</span>
+        <span class="when" title="{{ commit.author_time | when }}">{{ commit.author_time | ago_text }}</span></dd>
+      {% if commit.committer_name != commit.author_name or commit.committer_time != commit.author_time %}
+      <dt>Committer</dt>
+      <dd>{{ commit.committer_name }} <span class="muted">&lt;{{ commit.committer_email }}&gt;</span>
+        <span class="when" title="{{ commit.committer_time | when }}">{{ commit.committer_time | ago_text }}</span></dd>
+      {% endif %}
+      <dt>{{ 'Parent' if commit.parents | length == 1 else 'Parents' }}</dt>
+      <dd>
+        {% for p in commit.parents %}<a class="sha" href="{{ u.commit(p) }}">{{ p[:10] }}</a> {% else %}None. This is a first commit.{% endfor %}
+      </dd>
+    </dl>
+    <p class="commit-links"><a href="{{ u.code(rev=commit.sha) }}">Browse the files at this commit</a></p>
+    {% if commit.parents | length > 1 %}
+    <div class="notice">This is a merge commit. The diff shows the changes against the first parent.</div>
+    {% endif %}
+  </div>
+</div>
+{% include "_browse_diff.html" %}
+{% endblock %}

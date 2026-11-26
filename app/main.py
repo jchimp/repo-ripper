@@ -10,7 +10,17 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import auth, db, scheduler
 from .config import get_settings
 from .metadata import job as _metadata_job  # noqa: F401  (registers the metadata job)
-from .routes import auth_routes, dashboard, folders, health, repos, settings, setup, watch
+from .routes import (
+    auth_routes,
+    browse,
+    dashboard,
+    folders,
+    health,
+    repos,
+    settings,
+    setup,
+    watch,
+)
 from .routes import metadata as metadata_routes
 from .web import BASE_DIR, csrf_protect
 
@@ -61,5 +71,5 @@ app.include_router(health.router)
 app.include_router(auth_routes.router)
 
 # Private routers: add new feature routers to this tuple.
-for _module in (dashboard, repos, settings, setup, folders, watch, metadata_routes):
+for _module in (dashboard, repos, settings, setup, folders, watch, metadata_routes, browse):
     app.include_router(_module.router, dependencies=[Depends(auth.require_user)])

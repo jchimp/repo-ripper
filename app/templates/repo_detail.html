@@ -28,9 +28,9 @@
   {% if r.last_verify_status == 'error' %}<span class="tag tag-fail">verify failed</span>{% endif %}
 </div>
 
-{# === repository tabs: a later feature adds _repo_tabs.html with the links
-   "Code / Commits / Pull requests / Issues". No file, no output. === #}
-{% include "_repo_tabs.html" ignore missing %}
+{# Overview / Code / Commits / Pull requests / Issues / Releases / Wiki. #}
+{% set tabs = repo_tabs(r, "overview") %}
+{% include "_repo_tabs.html" %}
 
 {% if flash %}<div class="flash warn" role="status">{{ flash }}</div>{% endif %}
 

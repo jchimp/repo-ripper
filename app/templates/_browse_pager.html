@@ -1,0 +1,8 @@
+{# Previous / next links. Needs `prev_url`, `next_url` (empty: no link) and `pager_label`. #}
+{% if prev_url or next_url %}
+<nav class="pager" aria-label="Pages">
+  {% if prev_url %}<a class="btn" href="{{ prev_url }}" rel="prev">Newer</a>{% else %}<span class="btn off">Newer</span>{% endif %}
+  <span class="pager-label">{{ pager_label }}</span>
+  {% if next_url %}<a class="btn" href="{{ next_url }}" rel="next">Older</a>{% else %}<span class="btn off">Older</span>{% endif %}
+</nav>
+{% endif %}
