@@ -1,0 +1,33 @@
+{# One folder field with a "Browse" picker. Context: f (see fsbrowse.folder_field).
+   The picker swaps into #picker-<field>; "Use this folder" replaces this block. #}
+<div class="folder-field" id="ff-{{ f.field }}">
+  <label for="{{ f.field }}">{{ f.label }}</label>
+  <div class="folder-row">
+    <input type="text" id="{{ f.field }}" name="{{ f.field }}" value="{{ f.value }}"
+           autocomplete="off" spellcheck="false" aria-describedby="ff-hint-{{ f.field }}">
+    <button type="button" class="ghost"
+            hx-get="/browse" hx-vals='{{ {"field": f.field} | tojson }}'
+            hx-include="#{{ f.field }}"
+            hx-target="#picker-{{ f.field }}" hx-swap="innerHTML">Browse</button>
+  </div>
+  <div class="hint" id="ff-hint-{{ f.field }}">{{ f.hint }} Type a path, or select "Browse".</div>
+  <div class="folder-status" aria-live="polite">
+    {% if f.error %}<div class="notice fail" role="alert">{{ f.error }}</div>{% endif %}
+    {% if f.check %}
+      {% if f.check.total is not none %}
+      <div class="notice">
+        Free space: <span class="mono-cell">{{ f.check.free | fmt_size }}</span>
+        of <span class="mono-cell">{{ f.check.total | fmt_size }}</span>
+      </div>
+      {% endif %}
+      {% if f.check.writable %}
+      <div class="notice ok">Write test: OK. The app can write in this folder.</div>
+      {% else %}
+      <div class="notice fail" role="alert">Write test: failed. {{ f.check.problem }}</div>
+      {% endif %}
+    {% endif %}
+    {% if f.warning %}<div class="notice warn">{{ f.warning }}</div>{% endif %}
+  </div>
+  <div id="picker-{{ f.field }}" class="picker-slot" hx-target="this" hx-swap="innerHTML"
+       aria-live="polite"></div>
+</div>

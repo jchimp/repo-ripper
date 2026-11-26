@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set active = "setup" %}
+{% block title %}Setup: start — repo-ripper{% endblock %}
+{% block content %}
+<div class="eyebrow">Setup · step 4 of 4</div>
+<h1>Start</h1>
+{% include "_setup_steps.html" %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Summary</h2></div>
+  <div class="panel-body pad">
+    <dl class="kv">
+      <dt>Mirror folder</dt>
+      <dd><span class="mono-cell">{{ mirror_root }}</span></dd>
+      <dt>Protection copy</dt>
+      <dd>
+        {% if protection_skipped %}Skipped. The protection job has no schedule.
+        {% else %}<span class="mono-cell">{{ protection_root }}</span>{% endif %}
+      </dd>
+      <dt>GitHub account</dt>
+      <dd>
+        {% if token.check and token.check.ok %}<span class="mono-cell">{{ token.check.login }}</span>
+        {% elif token.source == "none" %}No token is set.
+        {% else %}Not checked yet. The next scan checks the token.{% endif %}
+      </dd>
+      <dt>Repositories</dt>
+      <dd>{{ enabled_count }} selected for backup, {{ repo_count }} in the list</dd>
+    </dl>
+    {% if overlap %}<div class="notice warn">{{ overlap }}</div>{% endif %}
+    {% for w in token.warnings %}<div class="notice warn">{{ w }}</div>{% endfor %}
+    {% if token.source == "none" %}
+    <div class="notice fail" role="alert">No GitHub token is set. <a href="/setup/token">Go to step 2.</a></div>
+    {% elif enabled_count == 0 %}
+    <div class="notice warn">
+      No repository is selected. The first sync will mirror nothing.
+      <a href="/setup/repos">Go to step 3.</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<p class="lead">
+  "Start first sync" starts the "Pull mirrors" job and opens the dashboard. The first sync
+  can take a long time. After that, the schedules in Settings run the jobs.
+</p>
+<form method="post" action="/setup/start">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="primary" {{ 'disabled' if token.source == "none" }}>Start first sync</button>
+  <a class="btn-link" href="/setup/repos">Back</a>
+</form>
+{% endblock %}

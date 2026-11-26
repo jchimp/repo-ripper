@@ -1,0 +1,65 @@
+{# Settings: storage folders and GitHub token. Own forms, outside the main form. #}
+<div class="form-section" id="storage">
+  <h2>Storage</h2>
+  {% if mirror_moved %}
+  <div class="notice warn" role="status">
+    The mirror folder changed. The app did not move data: the mirrors that exist stay in
+    the old folder. The next sync makes new clones in the new folder.
+  </div>
+  {% elif has_mirrors %}
+  <div class="notice warn">
+    The app does not move data. If you change the mirror folder, the mirrors that exist
+    stay in the old folder. The next sync makes new clones in the new folder.
+  </div>
+  {% endif %}
+  <form method="post" action="/settings/storage">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% with f = mirror %}{% include "_folder_field.html" %}{% endwith %}
+    {% with f = protection %}{% include "_folder_field.html" %}{% endwith %}
+    {% if protection_skipped %}
+    <div class="notice">The protection copy was skipped in setup. The protection job has no
+      schedule unless you set one below.</div>
+    {% endif %}
+    <button type="submit">Save folders</button>
+  </form>
+</div>
+
+<div class="form-section" id="github-token">
+  <h2>GitHub token</h2>
+  {% if token.unreadable %}<div class="notice fail" role="alert">{{ token.unreadable_message }}</div>{% endif %}
+  {% if token_error %}<div class="notice fail" role="alert">{{ token_error }}</div>{% endif %}
+  {% if token.source == "none" %}
+  <div class="notice warn">No GitHub token is set.</div>
+  {% else %}
+  <div class="notice">
+    {% if token.source == "stored" %}A token is stored in the app (encrypted).
+    {% else %}The app uses the token from the GITHUB_TOKEN value in the .env file.{% endif %}
+  </div>
+    {% if token.check %}
+      {% with check = token.check, warnings = token.warnings %}{% include "_token_result.html" %}{% endwith %}
+    {% else %}
+    <div class="hint">The token is not checked yet. The next scan checks it.</div>
+    {% endif %}
+  {% endif %}
+  <form method="post" action="/settings/token" class="token-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="field">
+      <label for="new_token">{{ "Replace token" if token.source == "stored" else "New token" }}</label>
+      <div class="folder-row">
+        <input type="password" id="new_token" name="token" value="" autocomplete="off"
+               spellcheck="false" placeholder="github_pat_... or ghp_...">
+        <button type="submit">Check and store</button>
+      </div>
+      <div class="hint">The app checks the token with GitHub, then stores it encrypted.</div>
+    </div>
+  </form>
+  {% if token.source == "stored" or token.unreadable %}
+  <form method="post" action="/settings/token/remove"
+        onsubmit="return confirm('Remove the stored GitHub token? Syncs stop until you enter a token again, unless a token is set in the .env file.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="confirm" value="yes">
+    <button type="submit" class="danger">Remove stored token</button>
+  </form>
+  {% endif %}
+  <div class="hint"><a href="/setup">Run setup again</a></div>
+</div>

@@ -1,0 +1,79 @@
+{# Folder browser. Context: field, label, listing (fsbrowse.Listing), error.
+   No <form> here: the picker sits inside the form of the page. #}
+{% macro go(path) %}hx-get="/browse" hx-vals='{{ {"field": field, "path": path} | tojson }}'{% endmacro %}
+<div class="picker" role="group" aria-label="Folder browser: {{ label }}">
+  <div class="picker-head">
+    <strong>Select the {{ label | lower }}</strong>
+    <span class="spacer"></span>
+    <button type="button" class="link" hx-get="/browse/close">Close</button>
+  </div>
+
+  {% if error %}<div class="notice fail" role="alert">{{ error }}</div>{% endif %}
+
+  <div class="picker-go">
+    <label for="picker-path-{{ field }}">Path</label>
+    <div class="folder-row">
+      <input type="text" id="picker-path-{{ field }}" name="path" value="{{ listing.path or '' }}"
+             autocomplete="off" spellcheck="false" placeholder="/mnt/nas/git-mirrors"
+             hx-get="/browse" hx-vals='{{ {"field": field} | tojson }}'
+             hx-trigger="keydown[key=='Enter']"
+             onkeydown="if (event.key === 'Enter') event.preventDefault()">
+      <button type="button" hx-get="/browse" hx-vals='{{ {"field": field} | tojson }}'
+              hx-include="#picker-path-{{ field }}">Go</button>
+    </div>
+  </div>
+
+  <nav class="crumbs" aria-label="Current folder">
+    <button type="button" class="link" {{ go("") }}>Folders</button>
+    {% for c in listing.crumbs %}
+    <span class="crumb-sep" aria-hidden="true">/</span>
+    <button type="button" class="link" {{ go(c.path) }}
+            {% if loop.last %}aria-current="location"{% endif %}>{{ c.label }}</button>
+    {% endfor %}
+  </nav>
+
+  <ul class="picker-list">
+    {% if listing.path %}
+    <li><button type="button" class="picker-item up" {{ go(listing.parent or "") }}>Up</button></li>
+    {% endif %}
+    {% for d in listing.dirs %}
+    <li><button type="button" class="picker-item" {{ go(d.path) }}>{{ d.label }}</button></li>
+    {% else %}
+    <li class="picker-empty">
+      {% if listing.path %}This folder has no sub-folders.{% else %}No folder is available.{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if not listing.path %}
+    {% if listing.missing_roots %}
+    <div class="notice warn">
+      Not found in the container: <span class="mono-cell">{{ listing.missing_roots | join(", ") }}</span>.
+      Add the NAS folder as a volume in docker-compose.yml, then start the container again.
+    </div>
+    {% endif %}
+    <div class="hint">The list shows only folders that are mounted into the container.</div>
+  {% else %}
+  <div class="picker-actions">
+    <div class="picker-new">
+      <label for="picker-new-{{ field }}">New folder in this folder</label>
+      <div class="folder-row">
+        <input type="text" id="picker-new-{{ field }}" name="name" autocomplete="off"
+               spellcheck="false" placeholder="git-mirrors"
+               hx-post="/browse/mkdir"
+               hx-vals='{{ {"field": field, "path": listing.path} | tojson }}'
+               hx-trigger="keydown[key=='Enter']"
+               onkeydown="if (event.key === 'Enter') event.preventDefault()">
+        <button type="button" hx-post="/browse/mkdir"
+                hx-vals='{{ {"field": field, "path": listing.path} | tojson }}'
+                hx-include="#picker-new-{{ field }}">New folder</button>
+      </div>
+    </div>
+    <button type="button" class="primary"
+            hx-post="/browse/use"
+            hx-vals='{{ {"field": field, "path": listing.path} | tojson }}'
+            hx-include="[name='mirror_root'],[name='protection_root']"
+            hx-target="#ff-{{ field }}" hx-swap="outerHTML">Use this folder</button>
+  </div>
+  {% endif %}
+</div>

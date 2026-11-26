@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% set active = "setup" %}
+{% block title %}Setup: token — repo-ripper{% endblock %}
+{% block content %}
+<div class="eyebrow">Setup · step 2 of 4</div>
+<h1>GitHub token</h1>
+{% include "_setup_steps.html" %}
+
+<p class="lead">
+  The app reads your repositories with a GitHub personal access token. Make the token on
+  GitHub: Settings, Developer settings, Personal access tokens. A fine-grained token needs
+  read-only access to "Contents" and "Metadata". A classic token needs the "repo" scope.
+  The app stores the token encrypted and does not show it again.
+</p>
+
+{% if token.unreadable %}<div class="notice fail" role="alert">{{ token.unreadable_message }}</div>{% endif %}
+{% if error %}<div class="notice fail" role="alert">{{ error }}</div>{% endif %}
+
+{% if token.source != "none" %}
+<div class="form-section">
+  <h2>Token in use</h2>
+  <div class="notice">
+    {% if token.source == "stored" %}A token is stored in the app.
+    {% else %}The app uses the token from the GITHUB_TOKEN value in the .env file.{% endif %}
+    To keep it, leave the field empty and continue.
+  </div>
+  {% with check = token.check, warnings = token.warnings %}{% include "_token_result.html" %}{% endwith %}
+</div>
+{% endif %}
+
+<form method="post" action="/setup/token">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="form-section">
+    <h2>{{ "Replace the token" if token.source != "none" else "Enter the token" }}</h2>
+    <div class="field">
+      <label for="token">Token</label>
+      <div class="folder-row">
+        <input type="password" id="token" name="token" value="" autocomplete="off"
+               spellcheck="false" placeholder="github_pat_... or ghp_...">
+        <button type="button" class="ghost" hx-post="/setup/token/check" hx-include="#token"
+                hx-target="#token-result" hx-swap="innerHTML">Check token</button>
+      </div>
+    </div>
+    <div id="token-result" aria-live="polite"></div>
+  </div>
+  <button type="submit" class="primary">Save and continue</button>
+  <a class="btn-link" href="/setup/storage">Back</a>
+</form>
+{% endblock %}

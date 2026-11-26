@@ -18,6 +18,7 @@ SEED_KEYS = (
     "telegram_enabled", "telegram_bot_token", "telegram_chat_id",
     "notify_on_success", "notify_on_fail", "protection_delete",
     "schedule_scan", "schedule_pull", "schedule_protection",
+    "auto_enable_new",
 )
 
 
@@ -89,23 +90,32 @@ def get_all_settings() -> dict[str, str]:
 
 # --- repos ------------------------------------------------------------------
 
-def upsert_repo(repo: dict) -> None:
+def upsert_repo(repo: dict, enabled: bool = True, update_enabled: bool = False) -> None:
+    """Insert a repository, or refresh its GitHub facts when it is known.
+
+    Args:
+        repo: The row values (full_name, private, fork, archived,
+            default_branch, mirror_path, discovered_at).
+        enabled: The backup switch for a NEW row.
+        update_enabled: Also set the switch of an existing row. Off by
+            default, so that a scan never changes the owner's choice.
+    """
+    sql = """
+        INSERT INTO repos (full_name, private, fork, archived, default_branch,
+                           mirror_path, discovered_at, enabled)
+        VALUES (:full_name, :private, :fork, :archived, :default_branch,
+                :mirror_path, :discovered_at, :enabled)
+        ON CONFLICT(full_name) DO UPDATE SET
+            private        = excluded.private,
+            fork           = excluded.fork,
+            archived       = excluded.archived,
+            default_branch = excluded.default_branch,
+            mirror_path    = excluded.mirror_path
+    """
+    if update_enabled:
+        sql += ", enabled = excluded.enabled"
     with get_conn() as conn:
-        conn.execute(
-            """
-            INSERT INTO repos (full_name, private, fork, archived, default_branch,
-                               mirror_path, discovered_at, enabled)
-            VALUES (:full_name, :private, :fork, :archived, :default_branch,
-                    :mirror_path, :discovered_at, 1)
-            ON CONFLICT(full_name) DO UPDATE SET
-                private        = excluded.private,
-                fork           = excluded.fork,
-                archived       = excluded.archived,
-                default_branch = excluded.default_branch,
-                mirror_path    = excluded.mirror_path
-            """,
-            repo,
-        )
+        conn.execute(sql, {**repo, "enabled": 1 if enabled else 0})
 
 
 def list_repos(enabled_only: bool = False) -> list[sqlite3.Row]:
@@ -120,6 +130,11 @@ def list_repos(enabled_only: bool = False) -> list[sqlite3.Row]:
 def get_repo(repo_id: int) -> sqlite3.Row | None:
     with get_conn() as conn:
         return conn.execute("SELECT * FROM repos WHERE id = ?", (repo_id,)).fetchone()
+
+
+def count_repos() -> int:
+    with get_conn() as conn:
+        return conn.execute("SELECT COUNT(*) FROM repos").fetchone()[0]
 
 
 def toggle_repo(repo_id: int) -> None:

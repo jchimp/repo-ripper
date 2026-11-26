@@ -1,0 +1,10 @@
+{# Step indicator. Context: step (1-4). #}
+<ol class="steps" aria-label="Setup steps">
+  {% for n, name, url in [(1, "Storage", "/setup/storage"), (2, "Token", "/setup/token"),
+                          (3, "Repositories", "/setup/repos"), (4, "Start", "/setup/start")] %}
+  <li class="{{ 'current' if n == step else ('done' if n < step else '') }}"
+      {% if n == step %}aria-current="step"{% endif %}>
+    <a href="{{ url }}"><span class="step-n">{{ n }}</span> {{ name }}</a>
+  </li>
+  {% endfor %}
+</ol>

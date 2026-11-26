@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     mirror_root: str = "/data/mirrors"          # primary share
     protection_root: str = "/data/protection"   # secondary share
     db_path: str = "/data/repo-ripper.db"
+    # Folders that the folder browser in the UI may show (comma-separated).
+    # Stored mirror/protection folders must be inside one of them.
+    browse_roots: str = "/mnt,/data"
 
     tz: str = "UTC"
 
@@ -44,6 +47,7 @@ class Settings(BaseSettings):
     include_archived: bool = True
     include_wikis: bool = True
     fetch_lfs: bool = True
+    auto_enable_new: bool = True  # turn on backup for repositories a scan finds
 
     telegram_enabled: bool = False
     telegram_bot_token: str = ""

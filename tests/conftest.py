@@ -39,6 +39,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("MIRROR_ROOT", str(tmp_path / "mirrors"))
     monkeypatch.setenv("PROTECTION_ROOT", str(tmp_path / "protection"))
+    # The folder browser may show only this temp folder.
+    monkeypatch.setenv("BROWSE_ROOTS", str(tmp_path))
 
     from app import auth
     from app.config import get_settings
@@ -47,6 +49,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
     from app.main import app
     with TestClient(app, follow_redirects=False) as c:
+        # Most tests are about an install that is already set up. First-run
+        # tests set this back to "0" (see tests/test_setup_wizard.py).
+        from app import db
+        db.set_setting("setup_complete", "1")
         yield c
     get_settings.cache_clear()
 

@@ -1,0 +1,7 @@
+{# Dashboard notice. Shown only when the owner must do something about the token. #}
+{% if token_health %}
+<div class="notice {{ token_health.level }} token-health" role="status">
+  {{ token_health.message }}
+  <a href="/settings#github-token">Open the token settings</a>
+</div>
+{% endif %}

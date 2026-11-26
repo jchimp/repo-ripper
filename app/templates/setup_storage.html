@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set active = "setup" %}
+{% block title %}Setup: storage — repo-ripper{% endblock %}
+{% block content %}
+<div class="eyebrow">Setup · step 1 of 4</div>
+<h1>Storage</h1>
+{% include "_setup_steps.html" %}
+
+<p class="lead">
+  Select the folder that will hold the mirrors. The app shows only folders that are
+  mounted into the container, below
+  {% for r in roots %}<span class="mono-cell">{{ r }}</span>{{ ", " if not loop.last }}{% endfor %}.
+  If the NAS folder is not there, add it as a volume in docker-compose.yml and start the
+  container again.
+</p>
+
+<form method="post" action="/setup/storage">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <div class="form-section">
+    <h2>Mirror folder</h2>
+    {% if has_mirrors %}
+    <div class="notice warn">
+      The app does not move data. If you change this folder, the mirrors that exist stay in
+      the old folder. The next sync makes new clones in the new folder.
+    </div>
+    {% endif %}
+    {% with f = mirror %}{% include "_folder_field.html" %}{% endwith %}
+  </div>
+
+  <div class="form-section">
+    <h2>Protection folder (optional)</h2>
+    <p class="lead">
+      The protection copy is a second copy of the mirror folder. Use a folder on a
+      different disk or share.
+    </p>
+    <div class="check">
+      <input type="checkbox" id="skip_protection" name="skip_protection" value="1" {{ 'checked' if skip }}>
+      <label for="skip_protection">Skip the protection copy. The protection job then has no schedule.</label>
+    </div>
+    {% with f = protection %}{% include "_folder_field.html" %}{% endwith %}
+  </div>
+
+  <button type="submit" class="primary">Save and continue</button>
+</form>
+{% endblock %}

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from .. import db, jobs, scheduler
+from .. import db, jobs, scheduler, setup_state
 from ..web import render
 
 router = APIRouter()
@@ -10,6 +10,8 @@ router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
+    if not setup_state.is_complete():
+        return RedirectResponse("/setup", status_code=303)  # first run
     repos = db.list_repos()
     enabled = [r for r in repos if r["enabled"]]
     total_size = sum((r["size_bytes"] or 0) for r in repos)
@@ -20,6 +22,7 @@ def dashboard(request: Request):
         "repo_count": len(repos),
         "enabled_count": len(enabled),
         "total_size": total_size,
+        "token_health": setup_state.token_health(),
     })
 
 

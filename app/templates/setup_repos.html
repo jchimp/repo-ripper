@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set active = "setup" %}
+{% block title %}Setup: repositories — repo-ripper{% endblock %}
+{% block content %}
+<div class="eyebrow">Setup · step 3 of 4</div>
+<h1>Repositories</h1>
+{% include "_setup_steps.html" %}
+
+<p class="lead">
+  Select the repositories to back up. The app adds all repositories to the Repositories
+  page. Backup is on for the selected repositories and off for the others. You can change
+  this later.
+</p>
+
+{% if error %}<div class="notice fail" role="alert">{{ error }}</div>{% endif %}
+
+<div id="repo-picker" hx-get="/setup/repos/list" hx-trigger="load" hx-swap="innerHTML"
+     aria-live="polite">
+  <div class="empty">The app gets the list from GitHub. This can take some seconds.</div>
+</div>
+<a class="btn-link" href="/setup/token">Back</a>
+<script src="/static/setup.js" defer></script>
+{% endblock %}

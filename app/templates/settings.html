@@ -10,7 +10,9 @@
 <div class="eyebrow">Configuration</div>
 <h1>Settings</h1>
 
-{% if saved %}<div class="saved" style="margin-top:16px">Settings saved. Schedules re-applied.</div>{% endif %}
+{% if notice %}<div class="saved" style="margin-top:16px">{{ notice }}</div>{% endif %}
+
+<div style="margin-top:20px">{% include "_settings_setup.html" %}</div>
 
 <form method="post" action="/settings" style="margin-top:20px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -21,6 +23,7 @@
     {{ checkbox('include_archived', 'Include archived repositories', s) }}
     {{ checkbox('include_wikis', 'Mirror wikis where present', s) }}
     {{ checkbox('fetch_lfs', 'Fetch Git LFS objects', s) }}
+    {{ checkbox('auto_enable_new', 'Turn on backup for newly found repositories', s) }}
   </div>
 
   <div class="form-section">
