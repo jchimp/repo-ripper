@@ -4,6 +4,9 @@ This document tells you how to read the data that repo-ripper stores: the
 code, the history, the pull requests and the issues. All of it works with no
 connection to GitHub.
 
+Statements about other tools that could not be confirmed from their official
+documentation have a tag: [Likely] or [Uncertain]. Test those before you rely on them.
+
 Short version: use the browser that is built into repo-ripper (Option A). It
 shows the code and the captured pull requests together. A second viewer
 (Option B) is possible, but it can show only the git data.
@@ -12,7 +15,7 @@ Placeholders used in this document:
 
 | Placeholder | Meaning | Example |
 |---|---|---|
-| `<mirror-root>` | The folder on the Docker host that is mounted as `/data/mirrors` in the container | `/mnt/nas/git-mirrors` |
+| `<mirror-root>` | The mirror folder that you selected in the setup (Settings, Storage shows it), as a path on the Docker host | `/mnt/nas/git-mirrors` |
 | `<host>` | The name or address of the Docker host on your LAN | `nas.lan` |
 | `<owner>`, `<repo>` | The GitHub owner and repository name | `octocat`, `hello-world` |
 | `<n>` | The number of a pull request or an issue | `42` |
@@ -73,8 +76,8 @@ Do these steps in a web browser on a computer on your LAN.
 
 1. Open `http://<host>:8019` and sign in.
    Expected result: the Dashboard shows.
-2. Select **Repositories**. Select **Browse** in the row of a repository that
-   has the status `ok`.
+2. Select **Repositories**. Select the name of a repository that has the
+   status `ok`, then select the tab **Code**.
    Expected result: the file list of the default branch shows, with the README below it.
 3. Select **Commits**. Select the first commit.
    Expected result: the commit message and the diff show.
@@ -208,7 +211,7 @@ cgit is a small web viewer for git repositories. The image
 `/srv/git` in the container and all folders below it, so the layout
 `<owner>/<repo>.git` works with no more configuration.
 
-**cgit has no sign-in.** Each person who can reach the port can read all
+**[Likely] cgit has no sign-in.** Each person who can reach the port can read all
 mirrored code, private repositories included. The service below listens only
 on the Docker host itself (`127.0.0.1`). Read section 6 before you change that.
 
@@ -296,7 +299,7 @@ repositories that are in its own repository folder (admin page
   database". Such updates also make no entries in the activity feed.
   [Uncertain] The official documentation does not say whether file and commit
   pages show the new data immediately.
-- Forgejo does not turn `refs/pull/<n>/head` refs into pull requests.
+- [Likely] Forgejo does not turn `refs/pull/<n>/head` refs into pull requests.
 
 **What works: a pull mirror in Forgejo, with its own storage.** Forgejo then
 holds a second copy and updates it by itself.

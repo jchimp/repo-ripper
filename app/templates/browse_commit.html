@@ -8,11 +8,11 @@
       <dt>Commit</dt><dd class="sha">{{ commit.sha }}</dd>
       <dt>Author</dt>
       <dd>{{ commit.author_name }} <span class="muted">&lt;{{ commit.author_email }}&gt;</span>
-        <span class="when" title="{{ commit.author_time | when }}">{{ commit.author_time | ago }}</span></dd>
+        <span class="when" title="{{ commit.author_time | when }}">{{ commit.author_time | ago_text }}</span></dd>
       {% if commit.committer_name != commit.author_name or commit.committer_time != commit.author_time %}
       <dt>Committer</dt>
       <dd>{{ commit.committer_name }} <span class="muted">&lt;{{ commit.committer_email }}&gt;</span>
-        <span class="when" title="{{ commit.committer_time | when }}">{{ commit.committer_time | ago }}</span></dd>
+        <span class="when" title="{{ commit.committer_time | when }}">{{ commit.committer_time | ago_text }}</span></dd>
       {% endif %}
       <dt>{{ 'Parent' if commit.parents | length == 1 else 'Parents' }}</dt>
       <dd>

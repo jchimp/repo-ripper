@@ -142,7 +142,12 @@ h2 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: 0.3px; }
 
 /* --- job control row ------------------------------------------------------ */
 
-.controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+/* Grid, not flex: with five or more jobs the cards of the last row keep the
+   width of the others. */
+.controls {
+  display: grid; gap: 12px; margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
 .job-control {
   flex: 1; min-width: 220px;
   background: var(--panel);

@@ -39,7 +39,7 @@
           <td>{% if c.sha in known %}<a class="subject" href="{{ u.commit(c.sha) }}">{{ subject }}</a>
               {% else %}<span class="subject">{{ subject }}</span> <span class="tag" title="Run the job {{ pull_job }} to get it.">not in the mirror</span>{% endif %}</td>
           <td class="author">{{ who.name or (c.author.login if c.author is mapping else '') or 'unknown' }}</td>
-          <td class="mono-cell" title="{{ who.date | when }}">{{ who.date | ago }}</td>
+          <td class="mono-cell" title="{{ who.date | when }}">{{ who.date | ago_text }}</td>
           <td class="mono-cell">{% if c.sha in known %}<a href="{{ u.commit(c.sha) }}">{{ (c.sha or '')[:8] }}</a>{% else %}{{ (c.sha or '')[:8] }}{% endif %}</td>
         </tr>
         {% endfor %}

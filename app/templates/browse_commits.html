@@ -20,7 +20,7 @@
           <td><a class="subject" href="{{ u.commit(c.sha) }}">{{ c.subject or '(no message)' }}</a>
             {%- if c.parents | length > 1 %}<span class="tag">merge</span>{% endif %}</td>
           <td class="author">{{ c.author_name }}</td>
-          <td class="mono-cell" title="{{ c.author_time | when }}">{{ c.author_time | ago }}</td>
+          <td class="mono-cell" title="{{ c.author_time | when }}">{{ c.author_time | ago_text }}</td>
           <td class="mono-cell"><a href="{{ u.commit(c.sha) }}">{{ c.sha[:8] }}</a></td>
         </tr>
         {% endfor %}

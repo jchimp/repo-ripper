@@ -22,7 +22,7 @@
     <a class="subject" href="{{ u.commit(last.sha) }}">{{ last.subject or '(no message)' }}</a>
     <span class="spacer"></span>
     <a class="sha" href="{{ u.commit(last.sha) }}">{{ last.sha[:8] }}</a>
-    <span class="when" title="{{ last.committer_time | when }}">{{ last.committer_time | ago }}</span>
+    <span class="when" title="{{ last.committer_time | when }}">{{ last.committer_time | ago_text }}</span>
     {% else %}
     <span class="spacer"></span>
     {% endif %}

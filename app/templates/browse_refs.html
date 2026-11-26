@@ -12,7 +12,7 @@
           <td><a class="repo-name" href="{{ u.code(rev=b.name) }}">{{ b.name }}</a>
             {%- if b.name == refs.default_branch %}<span class="tag">default</span>{% endif %}</td>
           <td class="subject-cell">{{ b.subject }}</td>
-          <td class="mono-cell" title="{{ b.time | when }}">{{ b.time | ago }}</td>
+          <td class="mono-cell" title="{{ b.time | when }}">{{ b.time | ago_text }}</td>
           <td class="mono-cell"><a href="{{ u.commit(b.sha) }}">{{ b.sha[:8] }}</a></td>
         </tr>
         {% endfor %}
@@ -42,7 +42,7 @@
               {%- if rel.draft %}<span class="tag">draft</span>{% endif %}
             {% else %}<span class="muted">{{ t.subject }}</span>{% endif %}
           </td>
-          <td class="mono-cell" title="{{ t.time | when }}">{{ t.time | ago }}</td>
+          <td class="mono-cell" title="{{ t.time | when }}">{{ t.time | ago_text }}</td>
           <td class="mono-cell"><a href="{{ u.commit(t.sha) }}">{{ t.sha[:8] }}</a></td>
         </tr>
         {% endfor %}

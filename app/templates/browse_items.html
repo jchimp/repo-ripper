@@ -42,9 +42,9 @@
              {%- if color %} style="--label: {{ color }}"{% endif %}>{{ lb.name }}</a>
           {% endfor %}
           <div class="item-sub">#{{ it.number }} · {{ it.user or 'unknown' }} · opened
-            <span title="{{ it.created_at | when }}">{{ it.created_at | ago }}</span>
-            {%- if it.merged_at %} · merged <span title="{{ it.merged_at | when }}">{{ it.merged_at | ago }}</span>
-            {%- elif it.closed_at %} · closed <span title="{{ it.closed_at | when }}">{{ it.closed_at | ago }}</span>{% endif %}
+            <span title="{{ it.created_at | when }}">{{ it.created_at | ago_text }}</span>
+            {%- if it.merged_at %} · merged <span title="{{ it.merged_at | when }}">{{ it.merged_at | ago_text }}</span>
+            {%- elif it.closed_at %} · closed <span title="{{ it.closed_at | when }}">{{ it.closed_at | ago_text }}</span>{% endif %}
           </div>
         </div>
         {% set talk = (it.comments or 0) + (it.review_comments or 0) %}

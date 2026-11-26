@@ -134,8 +134,10 @@ def token_health() -> dict | None:
     if view["unreadable"]:
         return {"level": "fail", "message": MSG_UNREADABLE}
     if view["source"] == "none":
-        return {"level": "fail",
-                "message": "No GitHub token is set. The app cannot find or mirror repositories."}
+        # Not a failure: watched public repositories need no token.
+        return {"level": "warn",
+                "message": "No GitHub token is set. The app cannot find your own repositories "
+                           "or mirror private ones. Watched public repositories still work."}
     check = view["check"]
     if check and not check.get("ok") and check.get("error_kind") == "rejected":
         return {"level": "fail",

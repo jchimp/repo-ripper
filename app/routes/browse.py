@@ -99,7 +99,8 @@ def _label_color(value: object) -> str:
     return f"#{value}" if isinstance(value, str) and _COLOR_RE.fullmatch(value) else ""
 
 
-templates.env.filters["ago"] = _ago
+# "ago" is the sync pages' filter (epoch seconds, HTML). This one takes ISO text too.
+templates.env.filters["ago_text"] = _ago
 templates.env.filters["when"] = _when
 templates.env.filters["label_color"] = _label_color
 
@@ -237,6 +238,10 @@ def repo_tabs(row: Any, active: str = "") -> dict:
         "issues": summary["issues"]["total"] if summary else 0,
         "releases": summary["releases"] if summary else 0,
     }
+
+
+# The repository detail page (another route module) shows the same tabs.
+templates.env.globals["repo_tabs"] = repo_tabs
 
 
 def _load(request: Request, repo_id: int, rev: str | None = None) -> RepoCtx:

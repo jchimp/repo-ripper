@@ -68,9 +68,15 @@ def test_unknown_repository_is_404(web) -> None:
         assert client.get(f"/repos/9999/{path}").status_code == 404
 
 
-def test_repositories_table_links_to_the_browser(web) -> None:
+def test_repository_page_links_to_the_browser(web) -> None:
+    """The table row opens the repository page; its tabs open the browser."""
     client, ids = web
-    assert f'href="/repos/{ids["demo"]}/code"' in page(client, "/repos")
+    base = f"/repos/{ids['demo']}"
+    assert f'href="{base}"' in page(client, "/repos")
+    html = page(client, base)
+    assert tab_names(html) == ["Overview", "Code", "Commits", "Pull requests", "Issues",
+                               "Releases", "Wiki"]
+    assert f'href="{base}/code"' in html
 
 
 # --- code -------------------------------------------------------------------

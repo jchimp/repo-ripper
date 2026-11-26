@@ -2,7 +2,7 @@
 <ol class="timeline">
   <li class="event">
     <div class="event-head"><strong>{{ author }}</strong> opened this
-      <span class="when" title="{{ opened_at | when }}">{{ opened_at | ago }}</span></div>
+      <span class="when" title="{{ opened_at | when }}">{{ opened_at | ago_text }}</span></div>
     {% if body_html %}
     {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
     <div class="md event-body">{{ body_html }}</div>
@@ -15,7 +15,7 @@
   <li class="event marker st-{{ e.kind }}">
     <div class="event-head">
       {% if e.user != 'unknown' %}<strong>{{ e.user }}</strong> {{ e.kind }} this{% else %}This was {{ e.kind }}{% endif %}
-      <span class="when" title="{{ e.when | when }}">{{ e.when | ago }}</span>
+      <span class="when" title="{{ e.when | when }}">{{ e.when | ago_text }}</span>
     </div>
   </li>
   {% else %}
@@ -26,7 +26,7 @@
         {{ {'APPROVED': 'approved these changes', 'CHANGES_REQUESTED': 'requested changes', 'DISMISSED': 'wrote a review that was dismissed'}.get(e.state, 'reviewed') }}
       {% elif e.kind == 'review_comment' %}commented on <span class="path">{{ e.path }}</span>
       {% else %}commented{% endif %}
-      {% if e.when %}<span class="when" title="{{ e.when | when }}">{{ e.when | ago }}</span>{% endif %}
+      {% if e.when %}<span class="when" title="{{ e.when | when }}">{{ e.when | ago_text }}</span>{% endif %}
     </div>
     {% if e.kind == 'review_comment' and e.hunk %}
     <div class="code-view">
