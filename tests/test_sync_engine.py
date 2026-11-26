@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app import db, github, jobs, mirror, notify, progress, scheduler, viewhelpers
+from app import db, github, jobs, mirror, notify, progress, runtime, scheduler, viewhelpers
 from app.routes import dashboard as dashboard_routes
 
 _GIT_ENV = {
@@ -98,6 +98,10 @@ def listing(*items: tuple[int, str]) -> list[dict]:
 
 def run_scan(monkeypatch: pytest.MonkeyPatch, items: list[dict]) -> None:
     monkeypatch.setattr(github, "list_all_repos", lambda **_kw: items)
+    # With no token the scan skips the "my repositories" part.
+    monkeypatch.setattr(runtime, "github_token", lambda: "test-token")
+    # The scan also checks the token with GitHub: no network in tests.
+    monkeypatch.setattr(jobs.setup_state, "refresh_token_check", lambda: None)
     jobs.run_scan_job()
 
 
@@ -881,3 +885,19 @@ def test_github_listing_has_the_numeric_id(app_db, monkeypatch: pytest.MonkeyPat
         transport=httpx.MockTransport(handler), base_url=kw["base_url"]))
     repos = github.list_all_repos(include_forks=True, include_archived=True)
     assert repos[0]["id"] == 4242 and repos[0]["full_name"] == "octo/alpha"
+
+
+def test_protection_job_does_nothing_when_the_copy_is_skipped(
+        app_db, monkeypatch: pytest.MonkeyPatch) -> None:
+    called: list[bool] = []
+    monkeypatch.setattr(jobs.protection, "run_protection_copy",
+                        lambda delete: called.append(delete) or (True, ""))
+    db.set_setting("protection_skip", "1")
+    jobs.run_protection_job()
+    assert called == []
+    assert db.recent_jobs(1)[0]["status"] == "skipped"
+
+    db.set_setting("protection_skip", "0")
+    jobs.run_protection_job()
+    assert len(called) == 1
+    assert db.recent_jobs(1)[0]["status"] == "ok"

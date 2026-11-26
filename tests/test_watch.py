@@ -222,9 +222,10 @@ def test_list_all_repos_pages_and_filters(gh: GH, monkeypatch: pytest.MonkeyPatc
 
     everything = github.list_all_repos(include_forks=True, include_archived=True)
     assert [r["full_name"] for r in everything] == ["me/a", "me/b", "me/c", "me/d"]
-    assert everything[0] == {"full_name": "me/a", "private": 1, "fork": 0, "archived": 0,
-                             "default_branch": "main", "has_wiki": True,
-                             "owner": "me", "description": "", "size_kb": 0, "pushed_at": ""}
+    first = {k: v for k, v in everything[0].items() if k != "id"}
+    assert first == {"full_name": "me/a", "private": 1, "fork": 0, "archived": 0,
+                     "default_branch": "main", "has_wiki": True,
+                     "owner": "me", "description": "", "size_kb": 0, "pushed_at": ""}
     assert {r.url.path for r in seen} == {"/user/repos"}
     assert seen[0].url.params["visibility"] == "all"
     assert seen[0].headers["authorization"] == "Bearer test-token-value"

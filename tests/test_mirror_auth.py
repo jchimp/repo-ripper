@@ -43,8 +43,7 @@ def test_real_clone_and_update_without_token(tmp_path: Path,
     work = tmp_path / "work"
     work.mkdir()
     _git("init", "-q", ".", cwd=work)
-    (work / "README.md").write_text("demo
-", encoding="utf-8")
+    (work / "README.md").write_text("demo\n", encoding="utf-8")
     _git("add", "README.md", cwd=work)
     _git("commit", "-q", "-m", "First.", cwd=work)
     remote = tmp_path / "remote"
@@ -56,11 +55,13 @@ def test_real_clone_and_update_without_token(tmp_path: Path,
     monkeypatch.setattr(runtime, "mirror_root", lambda: tmp_path / "mirrors")
 
     dest = tmp_path / "mirrors" / "octo" / "demo.git"
-    first = mirror.mirror_repo("octo/demo", fetch_lfs=False, include_wiki=False, has_wiki=False)
+    first = mirror.mirror_repo(
+        "octo/demo", fetch_lfs=False, include_wiki=False, has_wiki=False)
     assert first.ok, first.message
     assert first.action == "clone"
     assert (dest / "HEAD").exists()
 
-    second = mirror.mirror_repo("octo/demo", fetch_lfs=False, include_wiki=False, has_wiki=False)
+    second = mirror.mirror_repo(
+        "octo/demo", fetch_lfs=False, include_wiki=False, has_wiki=False)
     assert second.ok, second.message
     assert second.action == "update"

@@ -99,8 +99,8 @@ def run_scan_job() -> None:
                 include_forks = db.get_bool("include_forks")
                 include_archived = db.get_bool("include_archived")
                 repos = [r for r in listing
-                         if (include_forks or not r["fork"])
-                         and (include_archived or not r["archived"])]
+                         if (include_forks or not r.get("fork"))
+                         and (include_archived or not r.get("archived"))]
                 now = time.time()
                 new = 0
                 # Applies to NEW rows only: a known repository keeps its switch.
@@ -585,6 +585,13 @@ def run_protection_job() -> None:
         return _skip("protection")
     try:
         jid = db.start_job("protection")
+        if setup_state.protection_skipped():
+            # The owner chose "no protection copy" in the setup. Without this
+            # guard, "Run now" would copy to the fallback folder on local disk.
+            db.finish_job(jid, "skipped", 0, 0,
+                          "The protection copy is turned off. To use it, select a "
+                          "protection folder in Settings, Storage.", "")
+            return
         delete = db.get_bool("protection_delete")
         success, detail = protection.run_protection_copy(delete=delete)
         status = "ok" if success else "error"
