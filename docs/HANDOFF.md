@@ -1,9 +1,9 @@
 # Handoff — repo-ripper
-_Last updated: 2026-11-27 · branch: `storage-page` (UI 5/5, PR open) · phase: UI work for 0.3.0, 5 of 5 built_
+_Last updated: 2026-11-27 · branch: `release-0.3.0` (PR open) · phase: release 0.3.0_
 
 ## Status
 
-The UI work for 0.3.0 has five PRs. Four are merged, one is in review:
+The UI work for 0.3.0 has five PRs. All are merged:
 
 | # | Part | PR | State |
 |---|---|---|---|
@@ -11,17 +11,19 @@ The UI work for 0.3.0 has five PRs. Four are merged, one is in review:
 | 2 | Jobs page `/jobs`: live panel, all job runs, filters, pages | #18 | merged |
 | 3 | Repository tabs: Active, Other, Watched, All | #19 | merged |
 | 4 | Settings tabs: six tabs, one form and Save button each | #21 | merged |
-| 5 | Storage page `/storage`: folders, sizes, protection copy, size chart | storage-page | in review |
-| — | Release 0.3.0 (version, CHANGELOG section, tag `v0.3.0`) | — | after 5 is merged |
+| 5 | Storage page `/storage`: folders, sizes, protection copy, size chart | #22 | merged |
+| — | Release 0.3.0 (version, CHANGELOG section, tag `v0.3.0`) | release-0.3.0 | in review; tag after the merge |
 
 - **Verified:** `ruff` clean and `pytest` green at each merge (523 passed, 1 skipped
-  on `storage-page`). Headless-browser screenshots in both themes of every page that changed.
+  at PR #22, workstation only: CI is off, see below). Headless-browser screenshots in both themes of every page that changed.
 - **Not verified:** phone width, Firefox, and the HTMX parts (filters, bulk buttons,
   "Stop watching" on the All tab, theme toggle) in a real browser. Each PR has a
   numbered manual check list. This is an open todo in `docs/PROGRESS.md`.
 - **Known limit, not new:** the Backup switch in one repository row changes only that
   row. With tabs, the row stays on the old tab until the page loads again.
-- **Pending for Jeremy:** the manual checks of #17, #18, #19, #21 and the Storage page PR; the older review
+- **CI is off:** `.github/workflows/ci.yml` was renamed to `ci.yml.disabled` (commit 40b0b87,
+  2026-11-27). PRs #17 to #22 had no CI run. `CLAUDE.md` still says CI runs.
+- **Pending for Jeremy:** the manual checks of #17, #18, #19, #21 and #22; the older review
   follow-ups in `docs/PROGRESS.md`; remove the folders `%TEMP%\rr-shots-*` (left by
   the screenshot script, the delete was not allowed in the session).
 
@@ -109,7 +111,7 @@ A3: Dashboard, Repos, Jobs, Storage, Settings
      Use `.state-tabs` styles where they fit; CSS variables only.
    - Tests: each tab saves only its keys (a checkbox on another tab stays "1"),
      unknown section is 404, cron error stays on Schedules, CSRF on each form.
-2. **Done, in review: branch `storage-page` (UI 5/5).** The notes below were the plan; see
+2. **Done, merged as #22: branch `storage-page` (UI 5/5).** The notes below were the plan; see
    "This session" for what changed (release file sizes already existed; one chart, three lines).
    - New `app/routes/storage.py` (add it to the private tuple in `app/main.py`) and
      `templates/storage.html`; header item "Storage" (Q3).
@@ -127,7 +129,7 @@ A3: Dashboard, Repos, Jobs, Storage, Settings
      the NAS on a page load.
    - Charts: server-side SVG like `viewhelpers.size_chart()`; no JavaScript library.
      Move the "Mirror size over time" chart from the Dashboard to this page.
-3. **Release PR `release-0.3.0`:** `__version__` in `app/__init__.py` to 0.3.0; move
+3. **In review: release PR `release-0.3.0`.** After the merge: tag `v0.3.0` on `main`. `__version__` in `app/__init__.py` to 0.3.0; move
    "Unreleased" in `CHANGELOG.md` to "0.3.0 (date)"; after the merge, tag `v0.3.0`.
 4. **Each PR:** update `CHANGELOG.md` and `docs/PROGRESS.md` (and README where it
    describes the page); `ruff check .` and `pytest` green; screenshots in both themes;
@@ -145,6 +147,6 @@ Make temp folders inside the session scratchpad, not in `%TEMP%`.
 ## Resume prompt
 
 > In the repo-ripper repository, read `docs/HANDOFF.md`, `CLAUDE.md` and
-> `docs/PROGRESS.md`. Confirm that `main` has the `storage-page` PR merged and no
-> open UI branches, then make the release PR `release-0.3.0` from `main` (step 3 of
-> "Next steps") and wait for my review.
+> `docs/PROGRESS.md`. Confirm that `main` has the `release-0.3.0` PR merged, tag
+> `v0.3.0` on `main` if it is not there, then list the open todos in
+> `docs/PROGRESS.md` with a recommendation for the next one, and wait for my go.
