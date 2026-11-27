@@ -697,14 +697,14 @@ def register(spec: JobSpec) -> None:
 
 
 register(JobSpec("scan", "Scan GitHub",
-                 "Discover repositories and enrol new ones.",
+                 "Find the repositories on GitHub and add the new ones.",
                  run_scan_job, "0 3 * * *"))
 register(JobSpec("pull", "Pull mirrors",
-                 "git --mirror every enabled repo to the NAS.",
+                 "Clone or update the mirror of each repository that has the backup on.",
                  run_pull_job, "30 3 * * *"))
 register(JobSpec("protection", "Protection copy",
-                 "rsync the mirror share to the second share.",
+                 "Copy the mirror folder to the protection folder with rsync.",
                  run_protection_job, "0 5 * * 0"))
 register(JobSpec("verify", "Verify mirrors",
-                 "git fsck every mirror on disk.",
+                 "Run git fsck on each mirror on disk.",
                  run_verify_job, "0 6 * * 6"))

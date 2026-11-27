@@ -8,6 +8,58 @@ the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
 
+The fixes from the code review of 2026-11-26 (one PR).
+
+### Changed
+
+- **Protection copy: "delete" is off by default** for a new install. An install
+  that exists keeps its setting. See `docs/DECISIONS.md`, D-25.
+- **Dependencies** are at current versions, and `requirements.lock` pins the
+  indirect ones too. The Dockerfile and CI install with the lock.
+- **The GitHub token goes to git through the environment**, as a header for the
+  GitHub host only. It is no longer in the process list, and git and git-lfs do
+  not send it to other hosts.
+- The checkbox text for "delete" in Settings and the job descriptions on the
+  dashboard are reworded.
+
+### Added
+
+- **Marker file.** The app writes `.repo-ripper-root` into the mirror folder
+  and the protection folder when you select them. Pull, verify, metadata,
+  release files and protection stop with an error when the file is missing,
+  for example when the NAS share is not mounted. An install that exists gets
+  the file at the first start, if the folder holds data.
+- **Guards for the protection copy.** With "delete" on, the job does not run
+  when fewer than half of the repositories that had a good sync are in the
+  mirror folder. The job does not run while pull, metadata or release files run.
+- **Commits that lose their name upstream are kept.** A mirror never removes
+  unreachable objects, and each update writes deleted and force-pushed refs
+  with their old ids to `<name>.git/repo-ripper-lost-refs.log`. The README
+  section "Restore" has the recover commands.
+- **Process log.** `docker logs repo-ripper` shows job start and end, a
+  Telegram message that was not sent, and a schedule that was replaced.
+- **CI audit.** A CI job fails when a locked package has a known vulnerability.
+- `.dockerignore`.
+
+### Fixed
+
+- A schedule with an error is no longer saved; the Settings page shows a
+  message at the field. A bad stored schedule falls back to the default at
+  start. Before, the job had no schedule after the next restart.
+- The scan job and the protection job no longer stay on "running" after an
+  unexpected error, and they send the failure notification.
+- A mirror folder with no `HEAD` file is renamed to `<name>.git.broken-<time>`,
+  not deleted.
+- A failed update of a wiki mirror gives a warning, not "wiki absent".
+- A repository that is gone upstream no longer fails in the metadata job and
+  the release files job each day.
+- "Run now" uses the time zone of the scheduler.
+- The names of the token's own repositories get the same check as watched ones
+  before they become folder names.
+- The `job_runs` table keeps the newest 500 rows.
+- Saving the settings is one database transaction and does not block other
+  requests.
+
 ## 0.1.0 (2026-11-26)
 
 The first numbered version: everything from PR #1 to PR #14.

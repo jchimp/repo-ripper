@@ -445,9 +445,25 @@ log file as the full record.
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt   # Windows: .venv\Scripts\pip
+.venv/bin/pip install -r requirements-dev.txt -c requirements.lock   # Windows: .venv\Scripts\pip
 .venv/bin/ruff check .
 .venv/bin/pytest
+```
+
+`requirements.txt` holds the direct dependencies. `requirements.lock` pins these
+and all indirect dependencies, for Linux and Windows. The Dockerfile and CI
+install with the lock as constraints. After a change in `requirements.txt`,
+make the lock again (this needs `uv`) and commit both files:
+
+```bash
+uv pip compile requirements.txt --universal --python-version 3.12 -o requirements.lock
+```
+
+To update all indirect dependencies, add `--upgrade` to that command. CI fails
+if a locked package has a known vulnerability. The same check on your machine:
+
+```bash
+uvx pip-audit -r requirements.lock
 ```
 
 Layout: `app/routes/` has one module per page area; add a new router to the

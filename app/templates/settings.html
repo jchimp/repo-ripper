@@ -92,7 +92,7 @@
       From <span class="mono-cell">{{ mirror_root }}</span>
       to <span class="mono-cell">{{ protection_root }}</span>
     </div>
-    {{ checkbox('protection_delete', 'Delete extras on the copy (--delete: exact replica)', s) }}
+    {{ checkbox('protection_delete', 'Remove files from the copy that are not in the mirror folder (rsync --delete). Off keeps all files.', s) }}
   </div>
 
   <div class="form-section">
