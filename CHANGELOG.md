@@ -8,7 +8,9 @@ the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
 
-The fixes from the code review of 2026-11-26 (one PR).
+## 0.2.0 (2026-11-27)
+
+The fixes from the code review of 2026-11-26 (PR #15).
 
 ### Changed
 
