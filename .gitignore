@@ -1,6 +1,7 @@
 # Docs
 docs/private/
 *.local.md
+.review/
 
 # Secrets
 .env
