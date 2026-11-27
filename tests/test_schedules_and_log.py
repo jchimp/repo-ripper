@@ -26,54 +26,46 @@ def test_cron_problem_rejects_bad_strings(text: str) -> None:
 def test_bad_cron_on_save_stores_nothing(authed: tuple[TestClient, str]) -> None:
     from app import db, scheduler
     client, token = authed
-    client.post("/settings", data={
-        "csrf_token": token, "schedule_scan": "0 4 * * *", "telegram_chat_id": "old-chat",
-    })
+    client.post("/settings/schedules", data={"csrf_token": token, "schedule_scan": "0 4 * * *"})
     before = db.get_all_settings()
     next_before = scheduler.next_runs()
 
-    resp = client.post("/settings", data={
+    resp = client.post("/settings/schedules", data={
         "csrf_token": token,
         "schedule_scan": "30 3 * *",          # four fields
         "schedule_pull": "15 5 * * *",        # valid, but in the same form
-        "include_forks": "on",
-        "telegram_chat_id": "new-chat",
-        "telegram_bot_token": BOT_TOKEN,
-        "pull_workers": "7",
     })
 
     assert resp.status_code == 400
     assert db.get_all_settings() == before
     assert scheduler.next_runs() == next_before
     html = resp.text
-    assert "Settings not saved." in html
+    assert "Schedules not saved." in html
+    assert 'href="/settings/schedules" class="active"' in html   # stays on the tab
     # One message, next to the bad field only.
     assert html.count(scheduler.CRON_PROBLEM) == 1
     assert 'id="err-schedule_scan"' in html
     assert 'id="err-schedule_pull"' not in html
-    # The typed values stay in the fields. The secret does not come back.
-    assert 'name="schedule_scan"\n             value="30 3 * *"' in html
+    # The typed values stay in the fields.
+    assert 'name="schedule_scan"\n                 value="30 3 * *"' in html
     assert 'value="15 5 * * *"' in html
-    assert 'value="new-chat"' in html
-    assert 'name="pull_workers" min="1" max="8" step="1"\n           value="7"' in html
-    assert 'id="include_forks" name="include_forks" checked' in html
-    assert BOT_TOKEN not in html
 
 
 def test_good_save_stores_all_values(authed: tuple[TestClient, str]) -> None:
     from app import db, scheduler
     client, token = authed
-    resp = client.post("/settings", data={
-        "csrf_token": token,
-        "schedule_scan": " 10 4 * * * ",
-        "schedule_pull": "",
-        "include_forks": "on",
-        "telegram_chat_id": "chat-1",
-        "telegram_bot_token": BOT_TOKEN,
-        "pull_workers": "99",
+    resp = client.post("/settings/schedules", data={
+        "csrf_token": token, "schedule_scan": " 10 4 * * * ", "schedule_pull": "",
     })
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/settings?saved=1"
+    assert resp.headers["location"] == "/settings/schedules?saved=schedules"
+    resp = client.post("/settings/discovery", data={
+        "csrf_token": token, "include_forks": "on", "pull_workers": "99",
+    })
+    assert resp.headers["location"] == "/settings/discovery?saved=1"
+    client.post("/settings/notifications", data={
+        "csrf_token": token, "telegram_chat_id": "chat-1", "telegram_bot_token": BOT_TOKEN,
+    })
     assert db.get_setting("schedule_scan") == "10 4 * * *"
     assert db.get_setting("schedule_pull") == ""
     assert db.get_bool("include_forks") is True

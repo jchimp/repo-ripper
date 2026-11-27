@@ -10,123 +10,145 @@
 <div class="eyebrow">Configuration</div>
 <h1>Settings</h1>
 
-{% if notice %}<div class="saved" style="margin-top:16px">{{ notice }}</div>{% endif %}
-{% if cron_errors %}
-<div class="notice fail" role="alert" style="margin-top:16px">
-  Settings not saved. One or more schedules are not valid. Correct the fields in the
-  <a href="#schedules">Schedules</a> section, then save again.
-  If you typed a Telegram bot token, type it again.
-</div>
-{% endif %}
-
-<div style="margin-top:20px">{% include "_settings_setup.html" %}</div>
-
-<form method="post" action="/settings" style="margin-top:20px">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-  <div class="form-section">
-    <h2>Discovery</h2>
-    {{ checkbox('include_forks', 'Include forks', s) }}
-    {{ checkbox('include_archived', 'Include archived repositories', s) }}
-    {{ checkbox('include_wikis', 'Mirror wikis where present', s) }}
-    {{ checkbox('fetch_lfs', 'Fetch Git LFS objects', s) }}
-    {{ checkbox('auto_enable_new', 'Turn on backup for newly found repositories', s) }}
-  </div>
-
-  <div class="form-section">
-    <h2>Metadata</h2>
-    {{ checkbox('metadata_enabled', 'Capture metadata from GitHub', s) }}
-    <div class="hint">
-      The job "Capture metadata" downloads pull requests, issues, comments, reviews and
-      releases. It stores them as JSON files next to each mirror. To stop the capture for
-      one repository, use the Metadata switch on the Repositories page.
-    </div>
-    <h3 class="sub-h">Release files</h3>
-    <div class="hint" style="margin-bottom:12px">
-      The job "Download release files" stores the files that are attached to a release
-      (build zips, installers) and GitHub's source archives (.zip and .tar.gz). It is off
-      for each repository until you turn on its "Release files" switch on the
-      Repositories page.
-    </div>
-    <div class="field cron">
-      <label for="assets_keep_releases">Newest releases for each repository</label>
-      <input type="number" id="assets_keep_releases" name="assets_keep_releases"
-             min="0" step="1" value="{{ assets_keep_releases }}">
-      <div class="hint">Only this number of the newest releases get downloads. 0 = all releases.</div>
-    </div>
-    <div class="field cron">
-      <label for="assets_max_mb">Largest file (MB)</label>
-      <input type="number" id="assets_max_mb" name="assets_max_mb"
-             min="1" step="1" value="{{ assets_max_mb }}">
-      <div class="hint">A larger file is not stored. 1024 = 1 GB, 2048 = 2 GB.</div>
-    </div>
-  </div>
-
-  <div class="form-section" id="schedules">
-    <h2>Schedules</h2>
-    <div class="hint" style="margin-bottom:14px">
-      Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
-      timezone <span class="mono-cell">{{ cfg.tz }}</span>
-    </div>
-    {% for spec in job_specs %}
-    <div class="field cron">
-      <label for="{{ spec.schedule_key }}">{{ spec.label }}</label>
-      <input type="text" id="{{ spec.schedule_key }}" name="{{ spec.schedule_key }}"
-             value="{{ s.get(spec.schedule_key, spec.default_cron) }}"
-             {%- if cron_errors and cron_errors.get(spec.schedule_key) %} aria-invalid="true"
-             aria-describedby="err-{{ spec.schedule_key }}"{% endif %}>
-      {% if cron_errors and cron_errors.get(spec.schedule_key) %}
-      <div class="notice fail" role="alert" id="err-{{ spec.schedule_key }}">
-        {{ cron_errors[spec.schedule_key] }}</div>
-      {% endif %}
-    </div>
+<div class="settings-layout">
+  <nav class="settings-tabs" aria-label="Settings sections">
+    {% for t in tabs %}
+    <a href="/settings/{{ t.slug }}"{% if t.slug == tab.slug %} class="active" aria-current="page"{% endif %}>{{ t.title }}</a>
     {% endfor %}
-    <div class="hint">Leave a schedule empty to run that job by hand only.</div>
-  </div>
+  </nav>
 
-  {% include "_settings_sync.html" %}
-
-  <div class="form-section">
-    <h2>Protection copy</h2>
-    <div class="hint" style="margin-bottom:12px">
-      From <span class="mono-cell">{{ mirror_root }}</span>
-      to <span class="mono-cell">{{ protection_root }}</span>
+  <div class="settings-panel">
+    {% if notice %}<div class="saved">{{ notice }}</div>{% endif %}
+    {% if cron_errors %}
+    <div class="notice fail" role="alert">
+      Schedules not saved. One or more schedules are not valid. Correct the marked
+      fields, then save again.
     </div>
-    {{ checkbox('protection_delete', 'Remove files from the copy that are not in the mirror folder (rsync --delete). Off keeps all files.', s) }}
-  </div>
+    {% endif %}
 
-  <div class="form-section">
-    <h2>Telegram notifications</h2>
-    {{ checkbox('telegram_enabled', 'Enable Telegram notifications', s) }}
-    {{ checkbox('notify_on_success', 'Notify on completed jobs', s) }}
-    {{ checkbox('notify_on_fail', 'Notify on failed jobs', s) }}
-    <div class="two-col" style="margin-top:8px">
-      <div class="field">
-        <label for="telegram_bot_token">Bot token</label>
-        <input type="password" id="telegram_bot_token" name="telegram_bot_token"
-               autocomplete="off" value=""
-               placeholder="{{ 'Stored. Leave empty to keep it.' if secrets_set.telegram_bot_token else '123456:ABC-DEF...' }}">
-        {% if secrets_set.telegram_bot_token %}
-        <div class="check" style="margin-top:8px">
-          <input type="checkbox" id="telegram_bot_token_clear" name="telegram_bot_token_clear">
-          <label for="telegram_bot_token_clear">Remove the stored token</label>
+    {% if tab.slug == "storage" %}
+    {% include "_settings_setup.html" %}
+    {% else %}
+    <form method="post" action="/settings/{{ tab.slug }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      {% if tab.slug == "discovery" %}
+      <div class="form-section">
+        <h2>Discovery</h2>
+        {{ checkbox('include_forks', 'Include forks', s) }}
+        {{ checkbox('include_archived', 'Include archived repositories', s) }}
+        {{ checkbox('include_wikis', 'Mirror wikis where present', s) }}
+        {{ checkbox('fetch_lfs', 'Fetch Git LFS objects', s) }}
+        {{ checkbox('auto_enable_new', 'Turn on backup for newly found repositories', s) }}
+        <div class="field cron" style="margin-top:8px">
+          <label for="pull_workers">Parallel pulls</label>
+          <input type="number" id="pull_workers" name="pull_workers" min="1" max="8" step="1"
+                 value="{{ pull_workers }}">
         </div>
-        {% endif %}
+        <div class="hint">The pull job mirrors this number of repositories at the same time
+          (1 to 8). Use a smaller number for a slow NAS or a slow connection.</div>
       </div>
-      <div class="field">
-        <label for="telegram_chat_id">Chat ID</label>
-        <input type="text" id="telegram_chat_id" name="telegram_chat_id"
-               value="{{ s.get('telegram_chat_id', '') }}" placeholder="-1001234567890">
-      </div>
-    </div>
-    <button type="button" class="ghost"
-            hx-post="/settings/test-telegram" hx-target="#tg-test" hx-swap="innerHTML">
-      Send test message
-    </button>
-    <span id="tg-test"></span>
-    <div class="hint">Save before testing so the latest token and chat ID are used.</div>
-  </div>
 
-  <button type="submit" class="primary">Save changes</button>
-</form>
+      {% elif tab.slug == "metadata" %}
+      <div class="form-section">
+        <h2>Metadata</h2>
+        {{ checkbox('metadata_enabled', 'Capture metadata from GitHub', s) }}
+        <div class="hint">
+          The job "Capture metadata" downloads pull requests, issues, comments, reviews and
+          releases. It stores them as JSON files next to each mirror. To stop the capture for
+          one repository, use the Metadata switch on the Repositories page.
+        </div>
+        <h3 class="sub-h">Release files</h3>
+        <div class="hint" style="margin-bottom:12px">
+          The job "Download release files" stores the files that are attached to a release
+          (build zips, installers) and GitHub's source archives (.zip and .tar.gz). It is off
+          for each repository until you turn on its "Release files" switch on the
+          Repositories page.
+        </div>
+        <div class="field cron">
+          <label for="assets_keep_releases">Newest releases for each repository</label>
+          <input type="number" id="assets_keep_releases" name="assets_keep_releases"
+                 min="0" step="1" value="{{ assets_keep_releases }}">
+          <div class="hint">Only this number of the newest releases get downloads. 0 = all releases.</div>
+        </div>
+        <div class="field cron">
+          <label for="assets_max_mb">Largest file (MB)</label>
+          <input type="number" id="assets_max_mb" name="assets_max_mb"
+                 min="1" step="1" value="{{ assets_max_mb }}">
+          <div class="hint">A larger file is not stored. 1024 = 1 GB, 2048 = 2 GB.</div>
+        </div>
+      </div>
+
+      {% elif tab.slug == "schedules" %}
+      <div class="form-section" id="schedules">
+        <h2>Schedules</h2>
+        <div class="hint" style="margin-bottom:14px">
+          Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
+          timezone <span class="mono-cell">{{ cfg.tz }}</span>
+        </div>
+        {% for spec in job_specs %}
+        <div class="field cron">
+          <label for="{{ spec.schedule_key }}">{{ spec.label }}</label>
+          <input type="text" id="{{ spec.schedule_key }}" name="{{ spec.schedule_key }}"
+                 value="{{ s.get(spec.schedule_key, spec.default_cron) }}"
+                 {%- if cron_errors and cron_errors.get(spec.schedule_key) %} aria-invalid="true"
+                 aria-describedby="err-{{ spec.schedule_key }}"{% endif %}>
+          {% if cron_errors and cron_errors.get(spec.schedule_key) %}
+          <div class="notice fail" role="alert" id="err-{{ spec.schedule_key }}">
+            {{ cron_errors[spec.schedule_key] }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <div class="hint">Leave a schedule empty to run that job by hand only.</div>
+      </div>
+
+      {% elif tab.slug == "protection" %}
+      <div class="form-section">
+        <h2>Protection copy</h2>
+        <div class="hint" style="margin-bottom:12px">
+          From <span class="mono-cell">{{ mirror_root }}</span>
+          to <span class="mono-cell">{{ protection_root }}</span>
+        </div>
+        {{ checkbox('protection_delete', 'Remove files from the copy that are not in the mirror folder (rsync --delete). Off keeps all files.', s) }}
+      </div>
+
+      {% elif tab.slug == "notifications" %}
+      <div class="form-section">
+        <h2>Telegram notifications</h2>
+        {{ checkbox('telegram_enabled', 'Enable Telegram notifications', s) }}
+        {{ checkbox('notify_on_success', 'Notify on completed jobs', s) }}
+        {{ checkbox('notify_on_fail', 'Notify on failed jobs', s) }}
+        <div class="two-col" style="margin-top:8px">
+          <div class="field">
+            <label for="telegram_bot_token">Bot token</label>
+            <input type="password" id="telegram_bot_token" name="telegram_bot_token"
+                   autocomplete="off" value=""
+                   placeholder="{{ 'Stored. Leave empty to keep it.' if secrets_set.telegram_bot_token else '123456:ABC-DEF...' }}">
+            {% if secrets_set.telegram_bot_token %}
+            <div class="check" style="margin-top:8px">
+              <input type="checkbox" id="telegram_bot_token_clear" name="telegram_bot_token_clear">
+              <label for="telegram_bot_token_clear">Remove the stored token</label>
+            </div>
+            {% endif %}
+          </div>
+          <div class="field">
+            <label for="telegram_chat_id">Chat ID</label>
+            <input type="text" id="telegram_chat_id" name="telegram_chat_id"
+                   value="{{ s.get('telegram_chat_id', '') }}" placeholder="-1001234567890">
+          </div>
+        </div>
+        <button type="button" class="ghost"
+                hx-post="/settings/test-telegram" hx-target="#tg-test" hx-swap="innerHTML">
+          Send test message
+        </button>
+        <span id="tg-test"></span>
+        <div class="hint">Save before testing so the latest token and chat ID are used.</div>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="primary">Save {{ tab.title | lower }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

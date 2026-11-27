@@ -531,12 +531,12 @@ def test_job_is_skipped_when_the_setting_is_off(authed: tuple[TestClient, str],
                                                 fake: FakeGitHub) -> None:
     client, token = authed
     assert db.get_setting("metadata_enabled") == "1"  # seeded default: on
-    page = client.get("/settings").text
+    page = client.get("/settings/metadata").text
     assert "<h2>Metadata</h2>" in page and 'name="metadata_enabled" checked' in page
-    assert 'name="schedule_metadata"' in page
+    assert 'name="schedule_metadata"' in client.get("/settings/schedules").text
     assert db.get_setting("schedule_metadata") == "0 4 * * *"
 
-    client.post("/settings", data={"csrf_token": token})  # checkbox not sent = off
+    client.post("/settings/metadata", data={"csrf_token": token})  # checkbox not sent = off
     assert db.get_bool("metadata_enabled", True) is False
     enrol(DEMO)
     meta_job.run_metadata_job()
@@ -544,7 +544,7 @@ def test_job_is_skipped_when_the_setting_is_off(authed: tuple[TestClient, str],
     assert run["status"] == "skipped" and "off in Settings" in run["summary"]
     assert fake.requests == [] and not store.has_metadata(DEMO)
 
-    client.post("/settings", data={"csrf_token": token, "metadata_enabled": "on"})
+    client.post("/settings/metadata", data={"csrf_token": token, "metadata_enabled": "on"})
     assert db.get_bool("metadata_enabled") is True
 
 

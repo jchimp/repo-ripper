@@ -288,9 +288,9 @@ files** stores both kinds.
   Releases page of a repository shows a notice while its switch is off. To
   change many repositories, check the rows in the Repositories table and select
   "Release files on".
-- **Newest releases only.** Settings, section Metadata: "Newest releases for
+- **Newest releases only.** Settings, tab Metadata: "Newest releases for
   each repository" (default 10, 0 = all).
-- **Size limit.** Settings, section Metadata: "Largest file (MB)" (default 2048).
+- **Size limit.** Settings, tab Metadata: "Largest file (MB)" (default 2048).
   A larger file is not stored and shows as "too large".
 - **Nothing is deleted.** If a release or a file is removed on GitHub, the local
   copy stays and shows as "removed upstream". A release that is no longer one
@@ -337,18 +337,18 @@ corruption.
 
 The folder browser in the UI shows only folders below the `BROWSE_ROOTS` value
 (default `/mnt,/data`), and only folders that are mounted into the container.
-If you change the mirror folder later (Settings, Storage), the app does not
+If you change the mirror folder later (Settings, tab Storage and token), the app does not
 move data: the mirrors that exist stay in the old folder, and the next sync
 makes new clones in the new folder.
 
 When you select a storage folder, the app writes the file `.repo-ripper-root`
 into it. A job that writes stops with an error when this file is not there,
 because the NAS share is then probably not mounted. Do not delete the file; if
-you move a folder, select it again in Settings, Storage.
+you move a folder, select it again in Settings, tab Storage and token.
 
 ## Protection `--delete`
 
-The setting "Delete extras on the copy" (Settings) adds `--delete` to the rsync
+The setting "Delete extras on the copy" (Settings, tab Protection copy) adds `--delete` to the rsync
 command. **The default is off** for a new install. An install that already has
 the setting keeps its value.
 
@@ -507,8 +507,8 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
 - The app keeps the newest 200 history rows for each repository.
 - The Telegram message of a pull job with failures lists the failed
   repositories (10 names at most).
-- Settings does not save a schedule that is not valid cron. The page shows the
-  field with the error, and no value of that form is stored. If a stored
+- Settings does not save a schedule that is not valid cron. The Schedules tab
+  shows the field with the error, and no schedule is stored. If a stored
   schedule is not valid at start, the app uses the default schedule of that
   job, stores it, and writes a warning to the process log.
 - Ports, image, and mounts are all in `docker-compose.yml`.
