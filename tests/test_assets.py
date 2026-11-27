@@ -282,18 +282,50 @@ def test_settings_store_the_limits(app_fake) -> None:
     assert (assets_job.keep_releases(), assets_job.max_mb()) == (3, 1)
 
 
-def test_reminder_shows_until_one_repository_has_the_switch_on(app_fake) -> None:
+def test_reminder_stays_until_all_active_repositories_are_on(app_fake) -> None:
     client, _fake = app_fake
     token = sign_in(client)
-    reminder = "Release files are not downloaded."
-    assert reminder not in client.get("/").text        # no repositories yet
+    headers = {"X-CSRF-Token": token, "HX-Request": "true"}
+    everything = "<strong>Release files are not downloaded.</strong>"
+    assert "Release files are not downloaded" not in client.get("/").text   # no repositories
+    one, two, off, gone = (enrol(n) for n in ("octo/demo", "octo/two", "octo/off", "octo/gone"))
+    db.toggle_repo(off)                      # backup off: not an active repository
+    db.set_upstream_state(gone, "gone")      # gone upstream: not active
+    assert everything in client.get("/").text
+
+    client.post(f"/repos/{one}/assets-toggle", headers=headers)
+    page = " ".join(client.get("/").text.split())
+    assert "Release files are not downloaded for 1 of 2 repositories." in page
+
+    # Bulk action: a repository with the metadata switch off is not turned on.
+    db.toggle_repo_metadata(two)
+    resp = client.post("/repos/bulk", headers=headers,
+                       data={"ids": [str(one), str(two)], "action": "assets_on"})
+    assert "Release files turned on for 1 repositories." in resp.text
+    assert "1 have the metadata switch off" in resp.text
+    assert db.get_repo(two)["assets_enabled"] == 0
+
+    db.toggle_repo_metadata(two)
+    resp = client.post("/repos/bulk", headers=headers,
+                       data={"ids": [str(one), str(two)], "action": "assets_on"})
+    assert "Release files turned on for 2 repositories." in resp.text
+    assert "Release files are not downloaded" not in client.get("/").text
+
+    resp = client.post("/repos/bulk", headers=headers,
+                       data={"ids": [str(two)], "action": "assets_off"})
+    assert "Release files turned off for 1 repositories." in resp.text
+    page = " ".join(client.get("/").text.split())
+    assert "Release files are not downloaded for 1 of 2 repositories." in page
+
+
+def test_switch_toggle_returns_the_cell(app_fake) -> None:
+    client, _fake = app_fake
+    token = sign_in(client)
     rid = enrol(DEMO)
-    assert reminder in client.get("/").text
     resp = client.post(f"/repos/{rid}/assets-toggle", headers={"X-CSRF-Token": token,
                                                                "HX-Request": "true"})
     assert resp.status_code == 200 and 'aria-label="Download release files' in resp.text
     assert db.get_repo(rid)["assets_enabled"] == 1
-    assert reminder not in client.get("/").text
 
 
 def test_releases_page_and_file_download(app_fake) -> None:

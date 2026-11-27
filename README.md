@@ -286,8 +286,11 @@ files** stores both kinds.
   files" switch of a repository in the Repositories table, or on its Releases
   page. The repository also needs the metadata switch, because the list of
   releases comes from the metadata.
-- **Reminder.** While no repository has the switch on, the dashboard shows a
-  notice. The Releases page of a repository shows a notice while its switch is off.
+- **Reminder.** The dashboard shows a notice until each repository with the
+  backup on has the switch on ("not downloaded for 3 of 40 repositories"). The
+  Releases page of a repository shows a notice while its switch is off. To
+  change many repositories, check the rows in the Repositories table and select
+  "Release files on".
 - **Newest releases only.** Settings, section Metadata: "Newest releases for
   each repository" (default 10, 0 = all).
 - **Size limit.** Settings, section Metadata: "Largest file (MB)" (default 2048).

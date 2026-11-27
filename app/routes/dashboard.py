@@ -64,6 +64,12 @@ def _first_line(text: str | None) -> str:
     return best[:200]
 
 
+def _assets_reminder() -> dict | None:
+    """Values for the release files notice, or None when nothing is missing."""
+    missing, active = db.assets_coverage()
+    return {"missing": missing, "active": active} if missing else None
+
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     if not setup_state.is_complete():
@@ -80,8 +86,8 @@ def dashboard(request: Request):
         "enabled_count": len(enabled),
         "total_size": total_size,
         "token_health": setup_state.token_health(),
-        # A standing reminder: the switch is off by default on purpose.
-        "assets_reminder": bool(repos) and db.count_repos_with_assets() == 0,
+        # A standing reminder, until each active repository has the switch on.
+        "assets_reminder": _assets_reminder(),
         "health": _health(repos, time.time()),
         "live_jobs": viewhelpers.live_jobs(),
         "running_types": {key for key in jobs.JOBS if jobs.is_running(key)},

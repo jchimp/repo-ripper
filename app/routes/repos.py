@@ -71,7 +71,11 @@ def repos_bulk(
     source: str = Form(""), backup: str = Form(""), flag: str = Form(""),
     sort: str = Form(""),
 ):
-    """Apply one action to the checked rows: 'enable', 'disable' or 'sync'."""
+    """Apply one action to the checked rows.
+
+    Actions: 'enable', 'disable' (backup), 'sync', 'assets_on', 'assets_off'
+    (download of release files).
+    """
     ids = sorted(set(ids or []))
     message, kind = "", "info"
     if not ids:
@@ -79,6 +83,17 @@ def repos_bulk(
     elif action in ("enable", "disable"):
         count = db.set_repos_enabled(ids, action == "enable")
         message = f"Backup turned {'on' if action == 'enable' else 'off'} for {count} repositories."
+    elif action == "assets_on":
+        count = db.set_repos_assets(ids, True)
+        message = f"Release files turned on for {count} repositories."
+        if count < len(ids):
+            # The list of releases comes from the metadata capture.
+            message += (f" {len(ids) - count} have the metadata switch off: "
+                        "turn that on first.")
+            kind = "warn"
+    elif action == "assets_off":
+        count = db.set_repos_assets(ids, False)
+        message = f"Release files turned off for {count} repositories."
     elif action == "sync":
         refusal = _start_sync(ids)
         if refusal:

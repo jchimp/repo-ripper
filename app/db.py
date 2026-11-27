@@ -315,11 +315,44 @@ def list_repos_for_assets() -> list[sqlite3.Row]:
         ).fetchall()
 
 
-def count_repos_with_assets() -> int:
-    """Number of repositories with the release files switch on."""
+def assets_coverage() -> tuple[int, int]:
+    """Count the active repositories, and those without release file downloads.
+
+    Active = backup on and not gone upstream: the repositories that the
+    backup is expected to cover.
+
+    Returns:
+        `(active repositories with the release files switch off, active repositories)`.
+    """
     with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(assets_enabled = 0), 0), COUNT(*) FROM repos "
+            "WHERE enabled = 1 AND upstream_state != 'gone'"
+        ).fetchone()
+    return int(row[0]), int(row[1])
+
+
+def set_repos_assets(repo_ids: list[int], enabled: bool) -> int:
+    """Turn the release files switch on or off for several repositories.
+
+    Turning it on changes only repositories that have the metadata switch on,
+    because the list of releases comes from the metadata.
+
+    Returns:
+        The number of repositories that now have the requested state.
+    """
+    if not repo_ids:
+        return 0
+    marks = ", ".join("?" * len(repo_ids))
+    sql = f"UPDATE repos SET assets_enabled = ? WHERE id IN ({marks})"
+    if enabled:
+        sql += " AND metadata_enabled = 1"
+    with get_conn() as conn:
+        conn.execute(sql, [1 if enabled else 0, *repo_ids])
         return conn.execute(
-            "SELECT COUNT(*) FROM repos WHERE assets_enabled = 1").fetchone()[0]
+            f"SELECT COUNT(*) FROM repos WHERE assets_enabled = ? AND id IN ({marks})",
+            [1 if enabled else 0, *repo_ids],
+        ).fetchone()[0]
 
 
 def record_assets_result(full_name: str, status: str, message: str,
