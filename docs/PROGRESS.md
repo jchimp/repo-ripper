@@ -1,10 +1,11 @@
 # Project Progress
 
 ## Current Focus
-Version 0.1.0: all planned features are in `main` and Jeremy's browser checks passed. Now: daily use on the real NAS; fix what that finds.
+Version 0.2.0: the code review fixes (PR #15) are in `main`. Now: the review follow-up checks, then daily use on the real NAS; fix what that finds.
 
 ## Open Todos
-- [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (branch `review-fixes`)
+- [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (PR #15)
+- [ ] Tag `v0.2.0` on `main` after the release PR is merged
 - [ ] Review follow-up, by hand in a browser: Settings with a bad schedule, in both themes (the message box can be too wide)
 - [ ] Review follow-up, on the Docker host: restart with the NAS not mounted (jobs must stop with the marker message); one protection copy to the real SMB share; one pull of a repository with Git LFS (token header now limited to github.com)
 - [ ] Review follow-up, not done: one GitHub client in place of two (L-6); a container stop during a pull (L-9); the protection copy does not block a job that starts after it, or "Sync now" of selected repositories
@@ -31,7 +32,8 @@ Version 0.1.0: all planned features are in `main` and Jeremy's browser checks pa
 
 ### 2026-11-27
 - Senior code review of `v0.1.0` (report in `.review/`, not in git): 1 critical, 4 high, 7 medium, 9 low findings. Main theme: the jobs did not check that the mirror folder is the NAS.
-- Fixed on the branch `review-fixes`: marker file and storage check, protection copy guards and "delete" off by default, kept commits and `repo-ripper-lost-refs.log`, token header for the GitHub host only, cron check, crash guard for scan and protection, process log, dependency update with a lock and a CI audit. See `CHANGELOG.md`, "Unreleased", and D-24 to D-26.
+- Fixed on the branch `review-fixes`: marker file and storage check, protection copy guards and "delete" off by default, kept commits and `repo-ripper-lost-refs.log`, token header for the GitHub host only, cron check, crash guard for scan and protection, process log, dependency update with a lock and a CI audit. See `CHANGELOG.md`, section 0.2.0, and D-24 to D-26.
+- Merged as PR #15. Version set to 0.2.0: the `v0.1.0` tag was made before PR #15, so the fixes go in a new version, not in 0.1.0.
 - Next: the three follow-up todos above, then two weeks of daily use before the project is announced.
 
 ### 2026-11-26
