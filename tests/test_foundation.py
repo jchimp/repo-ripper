@@ -161,3 +161,13 @@ def test_static_urls_carry_a_content_version(client: TestClient) -> None:
     assert match, html
     assert client.get(match.group(1)).status_code == 200
     assert web.static_url("no-such-file.css") == "/static/no-such-file.css"
+
+
+def test_version_shows_in_the_footer(authed: tuple[TestClient, str]) -> None:
+    import app as app_package
+    client, _token = authed
+    assert app_package.__version__ == "0.1.0"
+    assert f"repo-ripper {app_package.__version__}</footer>" in client.get("/settings").text
+    # Not on the sign-in page: a visitor without a session learns nothing.
+    client.cookies.clear()
+    assert "app-footer" not in client.get("/login").text

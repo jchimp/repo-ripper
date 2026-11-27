@@ -2,11 +2,15 @@
 
 All notable changes to repo-ripper. Newest first.
 
-The project has no version numbers yet. Changes are grouped under "Unreleased"
-until the first tagged release. Each line names the pull request (PR) that made
-the change.
+New changes go under "Unreleased". A release moves them to a section with the
+version and the date. The version is in `app/__init__.py`; the git tag is `v` +
+the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
+
+## 0.1.0 (2026-11-26)
+
+The first numbered version: everything from PR #1 to PR #14.
 
 ### Added
 
@@ -105,6 +109,13 @@ the change.
   (PR #6).
 - The GitHub token is sent only to the GitHub API host; a download address on
   another host is refused (PR #4, #10).
+
+### Maintenance
+
+- The version number is in `app/__init__.py` and shows at the bottom of each
+  page (PR #14).
+- CI uses `actions/checkout@v7` and `actions/setup-python@v7`. The older
+  versions ran on Node.js 20, which GitHub has deprecated (PR #14).
 
 ### Notes
 

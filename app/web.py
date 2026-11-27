@@ -11,6 +11,8 @@ from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from . import __version__
+
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -60,6 +62,7 @@ def _fmt_size(n: int | None) -> str:
 templates.env.filters["fmt_time"] = _fmt_time
 templates.env.filters["fmt_size"] = _fmt_size
 templates.env.globals["static_url"] = static_url
+templates.env.globals["app_version"] = __version__
 
 
 def csrf_token(request: Request) -> str:
