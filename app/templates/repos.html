@@ -14,11 +14,32 @@
   </form>
 </div>
 
-{% include "_watch_panel.html" %}
+{# The tab sets the source and the backup state. A tab is a full page load:
+   the filters below start empty on each tab. #}
+{% set tab_list = [('active', 'Active', 'Your repositories with the backup on'),
+                   ('other', 'Other', 'Your repositories with the backup off'),
+                   ('watched', 'Watched', 'Public repositories of other people that you watch'),
+                   ('all', 'All', 'All repositories')] %}
+<nav class="state-tabs sub" aria-label="Repository groups">
+  {% for key, label, title in tab_list %}
+  <a href="/repos{{ '?tab=' ~ key if key != 'active' }}" title="{{ title }}"
+     {% if f.tab == key %}class="active" aria-current="page"{% endif %}>{{ label }} <span class="count">{{ counts[key] }}</span></a>
+  {% endfor %}
+</nav>
 
-<form id="repo-filters" class="filters" method="get" action="/repos" role="search"
+{% if f.tab == 'watched' %}{% include "_watch_panel.html" %}
+{% else %}
+{# "Stop watching" on the All tab puts its result here (the panel is not on
+   this tab). The message says where the mirror files stay. #}
+<div id="watch-result" class="watch-result standalone" role="status" aria-live="polite"></div>
+{% endif %}
+
+{% set show_backup = f.tab in ('watched', 'all') %}
+<form id="repo-filters" class="filters {{ 'nf-4' if show_backup else 'nf-3' }}" method="get"
+      action="/repos" role="search"
       hx-get="/repos" hx-target="#repo-list" hx-swap="outerHTML"
       hx-trigger="input changed delay:250ms, change" hx-push-url="true">
+  <input type="hidden" name="tab" value="{{ f.tab }}">
   <div class="filter grow">
     <label for="f-q">Search</label>
     <input type="search" id="f-q" name="q" value="{{ f.q }}" placeholder="Name contains"
@@ -43,14 +64,7 @@
       {{ option('private', 'Private', f.visibility) }}
     </select>
   </div>
-  <div class="filter">
-    <label for="f-source">Source</label>
-    <select id="f-source" name="source">
-      {{ option('', 'All', f.source) }}
-      {{ option('mine', 'Mine', f.source) }}
-      {{ option('watched', 'Watched', f.source) }}
-    </select>
-  </div>
+  {% if show_backup %}
   <div class="filter">
     <label for="f-backup">Backup</label>
     <select id="f-backup" name="backup">
@@ -59,6 +73,7 @@
       {{ option('off', 'Off', f.backup) }}
     </select>
   </div>
+  {% endif %}
   <div class="filter">
     <label for="f-flag">Problem</label>
     <select id="f-flag" name="flag">
@@ -81,7 +96,7 @@
   </div>
   <div class="filter end">
     <noscript><button type="submit">Apply</button></noscript>
-    <a class="btn ghost" href="/repos">Clear</a>
+    <a class="btn ghost" href="/repos{{ '?tab=' ~ f.tab if f.tab != 'active' }}">Clear</a>
   </div>
 </form>
 

@@ -474,7 +474,8 @@ def test_watch_routes_need_session_and_csrf(client: TestClient, authed: Authed, 
 
 def test_repos_page_shows_the_panel(authed: Authed) -> None:
     c, _token = authed
-    html = c.get("/repos").text
+    assert "Watch a public repository" not in c.get("/repos").text   # Active tab
+    html = c.get("/repos?tab=watched").text
     assert "Watch a public repository" in html
     assert 'hx-post="/watch/repos"' in html
     assert 'id="watch-result"' in html and 'aria-live="polite"' in html
@@ -488,14 +489,14 @@ def test_add_repo_route_reloads_and_shows_the_row(authed: Authed, gh: GH) -> Non
 
     resp = c.post("/watch/repos", data={"repo": "octo/demo"}, headers=headers)
     assert resp.status_code == 204
-    assert resp.headers["HX-Redirect"] == "/repos?watched=octo%2Fdemo"
+    assert resp.headers["HX-Redirect"] == "/repos?tab=watched&watched=octo%2Fdemo"
 
     html = c.get(resp.headers["HX-Redirect"]).text
     assert "Added octo/demo. The next pull job makes the mirror." in html
     assert '<span class="tag tag-watched">watched</span>' in html
     assert "Stop watching octo/demo" in html
     # The notice shows only for a watched repository that is in the table.
-    assert "Added" not in c.get("/repos?watched=evil%2Ftext").text
+    assert "Added" not in c.get("/repos?tab=watched&watched=evil%2Ftext").text
 
     resp = c.post("/watch/repos", data={"repo": "octo/demo"}, headers=headers)
     assert resp.status_code == 200
@@ -522,7 +523,7 @@ def test_stop_watching_removes_the_row_and_keeps_the_files(authed: Authed, tmp_p
     (mirror_dir / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
 
     # The confirmation text in the row shows the path and what stays.
-    html = c.get("/repos").text
+    html = c.get("/repos?tab=watched").text
     assert str(mirror_dir) in html
     assert "It does not delete the mirror." in html
     assert "You can delete them by hand." in html
@@ -534,14 +535,14 @@ def test_stop_watching_removes_the_row_and_keeps_the_files(authed: Authed, tmp_p
     assert "HX-Reswap" not in resp.headers
     assert db.get_repo(repo["id"]) is None
     assert (mirror_dir / "HEAD").read_text(encoding="utf-8") == "ref: refs/heads/main\n"
-    assert "other/lib" not in c.get("/repos").text
+    assert "other/lib" not in c.get("/repos?tab=all").text
 
 
 def test_stop_watching_refuses_an_own_repository(authed: Authed) -> None:
     c, token = authed
     db.upsert_repo(repo_row("me/own"))
     repo = db.get_repo_by_name("me/own")
-    assert "Stop watching" not in c.get("/repos").text
+    assert "Stop watching" not in c.get("/repos?tab=all").text
 
     resp = c.post(f"/watch/repos/{repo['id']}/stop", headers={**HX, "X-CSRF-Token": token})
     assert resp.headers["HX-Reswap"] == "none"  # HTMX must keep the table row
@@ -552,10 +553,10 @@ def test_stop_watching_refuses_an_own_repository(authed: Authed) -> None:
 def test_stop_watching_warns_when_the_owner_is_watched(authed: Authed) -> None:
     c, _token = authed
     db.upsert_repo(repo_row("octocat/a", source="watched"))
-    assert "is a watched owner" not in c.get("/repos").text
+    assert "is a watched owner" not in c.get("/repos?tab=watched").text
     db.add_watch_owner("Octocat", "user", False, False)
     assert "octocat is a watched owner. The next scan job adds this repository again." in (
-        c.get("/repos").text)
+        c.get("/repos?tab=watched").text)
 
 
 def test_owner_routes_add_and_remove(authed: Authed, gh: GH) -> None:
@@ -570,7 +571,7 @@ def test_owner_routes_add_and_remove(authed: Authed, gh: GH) -> None:
     assert "with archived" not in resp.text
     assert "Added octocat. The next scan job adds the public repositories of octocat." in resp.text
     owner = db.list_watch_owners()[0]
-    assert "octocat" in c.get("/repos").text
+    assert "octocat" in c.get("/repos?tab=watched").text
 
     db.upsert_repo(repo_row("octocat/a", source="watched"))
     resp = c.post(f"/watch/owners/{owner['id']}/remove", headers=headers)

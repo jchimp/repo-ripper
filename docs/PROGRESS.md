@@ -5,8 +5,8 @@ UI work for 0.3.0, five PRs in this order: GitHub-style theme, Jobs page, reposi
 
 ## Open Todos
 - [x] UI 1/5: GitHub-style theme, light and dark, with Octicons (PR #17)
-- [x] UI 2/5: Jobs page: live panel plus all job runs, with pages and filters; "Recent jobs" leaves the Dashboard (branch `jobs-page`)
-- [ ] UI 3/5: Repository tabs: Active (mine, backup on), Other (mine, backup off), Watched (with the watch panel)
+- [x] UI 2/5: Jobs page: live panel plus all job runs, with pages and filters; "Recent jobs" leaves the Dashboard (PR #18)
+- [x] UI 3/5: Repository tabs: Active (mine, backup on), Other (mine, backup off), Watched (with the watch panel), All (branch `repo-tabs`)
 - [ ] UI 4/5: Settings tabs: vertical, one URL and one Save button for each section
 - [ ] UI 5/5: Storage page: folders, marker, disk space, protection copy, sizes of code / metadata / release files, charts (migration 0032)
 - [ ] Release 0.3.0 after the five UI PRs
@@ -39,7 +39,8 @@ UI work for 0.3.0, five PRs in this order: GitHub-style theme, Jobs page, reposi
 ### 2026-11-27
 - Planned five UI PRs (theme, Jobs, repository tabs, settings tabs, Storage). Jeremy accepted all recommendations: theme first; Dashboard keeps the live panel and "Run now"; third tab is "Watched"; protection settings stay on Settings; one Save button for each settings tab; Octicons but no GitHub logo; release as 0.3.0.
 - UI 1/5 built on `theme-github`: Primer colours, GitHub-style components, Octicons in `app/icons.py` (D-27). Merged as PR #17.
-- UI 2/5 built on `jobs-page`: `/jobs` with the live panel, filters and pages; job run routes moved from `routes/dashboard.py` to `routes/job_runs.py`.
+- UI 2/5 built on `jobs-page`: `/jobs` with the live panel, filters and pages; job run routes moved from `routes/dashboard.py` to `routes/job_runs.py`. Merged as PR #18.
+- UI 3/5 built on `repo-tabs`. Added a fourth tab, All, not in the plan: the Dashboard links (failing, never synced, verify failed, gone upstream, release files) count own and watched repositories together, so they need a tab that shows both.
 - Senior code review of `v0.1.0` (report in `.review/`, not in git): 1 critical, 4 high, 7 medium, 9 low findings. Main theme: the jobs did not check that the mirror folder is the NAS.
 - Fixed on the branch `review-fixes`: marker file and storage check, protection copy guards and "delete" off by default, kept commits and `repo-ripper-lost-refs.log`, token header for the GitHub host only, cron check, crash guard for scan and protection, process log, dependency update with a lock and a CI audit. See `CHANGELOG.md`, section 0.2.0, and D-24 to D-26.
 - Merged as PR #15. Version set to 0.2.0: the `v0.1.0` tag was made before PR #15, so the fixes go in a new version, not in 0.1.0.

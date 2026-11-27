@@ -45,7 +45,7 @@
         {% endfor %}
       </tbody>
     </table>
-    {% elif total == 0 %}
+    {% elif counts.all == 0 %}
     <div class="empty">
       <p>No repositories yet. Run a scan to find the repositories of your GitHub account.</p>
       <form method="post" action="/run/scan" hx-post="/run/scan">
@@ -53,10 +53,16 @@
         <button type="submit" class="primary">Scan GitHub</button>
       </form>
     </div>
+    {% elif total == 0 %}
+    <div class="empty">
+      {% if f.tab == 'active' %}<p>No repository of yours has the backup on. Turn it on in the <a href="/repos?tab=other">Other</a> tab.</p>
+      {% elif f.tab == 'other' %}<p>All your repositories have the backup on.</p>
+      {% else %}<p>You watch no public repositories. Add one in the panel above.</p>{% endif %}
+    </div>
     {% else %}
     <div class="empty">
       <p>No repository matches these filters.</p>
-      <a class="btn" href="/repos">Clear the filters</a>
+      <a class="btn" href="/repos{{ '?tab=' ~ f.tab if f.tab != 'active' }}">Clear the filters</a>
     </div>
     {% endif %}
   </div>

@@ -33,7 +33,7 @@ def watch_repo_add(request: Request, repo: str = Form("")):
         return render(request, "_watch_result.html", {"ok": False, "message": result.message})
     # Reload the page: the new row must show in the table, which this module
     # does not own. The panel shows the result message after the reload.
-    target = "/repos?" + urlencode({"watched": result.name})
+    target = "/repos?" + urlencode({"tab": "watched", "watched": result.name})
     if request.headers.get("HX-Request"):
         resp = Response(status_code=204)
         resp.headers["HX-Redirect"] = target
@@ -58,7 +58,7 @@ def watch_repo_stop(request: Request, repo_id: int):
             f"{_mirror_path(repo)}. You can delete them by hand."
         )
     if not request.headers.get("HX-Request"):
-        return RedirectResponse("/repos", status_code=303)
+        return RedirectResponse("/repos?tab=watched", status_code=303)
     resp = render(request, "_watch_result.html", {"ok": ok, "message": message, "oob": True})
     if not ok and repo is not None:
         # The button asks HTMX to delete the table row. Keep the row.
@@ -72,7 +72,7 @@ def watch_owner_add(request: Request, login: str = Form(""),
                     include_archived: str | None = Form(None)):
     result = watch.add_owner(login, bool(include_forks), bool(include_archived))
     if not request.headers.get("HX-Request"):
-        return RedirectResponse("/repos", status_code=303)
+        return RedirectResponse("/repos?tab=watched", status_code=303)
     return _owners_fragment(request, result.ok, result.message)
 
 
@@ -88,7 +88,7 @@ def watch_owner_remove(request: Request, owner_id: int):
             f"of {owner['login']}. The repositories that are in the list stay there."
         )
     if not request.headers.get("HX-Request"):
-        return RedirectResponse("/repos", status_code=303)
+        return RedirectResponse("/repos?tab=watched", status_code=303)
     return _owners_fragment(request, ok, message)
 
 

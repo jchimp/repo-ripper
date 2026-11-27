@@ -16,12 +16,12 @@
   <span class="health-dot"></span>
   <span class="health-main">{{ 'Problems found.' if health.failing or health.verify_failed else 'Attention.' }}</span>
   <span class="health-items">
-    {% if health.failing %}<a class="h-fail" href="/repos?status=error&amp;backup=on"><b>{{ health.failing }}</b> failing</a>{% endif %}
-    {% if health.verify_failed %}<a class="h-fail" href="/repos?flag=verify"><b>{{ health.verify_failed }}</b> verify failed</a>{% endif %}
-    {% if health.warn %}<a class="h-warn" href="/repos?status=warn"><b>{{ health.warn }}</b> with warnings</a>{% endif %}
-    {% if health.never %}<a class="h-muted" href="/repos?status=pending&amp;backup=on"><b>{{ health.never }}</b> never synced</a>{% endif %}
+    {% if health.failing %}<a class="h-fail" href="/repos?tab=all&amp;status=error&amp;backup=on"><b>{{ health.failing }}</b> failing</a>{% endif %}
+    {% if health.verify_failed %}<a class="h-fail" href="/repos?tab=all&amp;flag=verify"><b>{{ health.verify_failed }}</b> verify failed</a>{% endif %}
+    {% if health.warn %}<a class="h-warn" href="/repos?tab=all&amp;status=warn"><b>{{ health.warn }}</b> with warnings</a>{% endif %}
+    {% if health.never %}<a class="h-muted" href="/repos?tab=all&amp;status=pending&amp;backup=on"><b>{{ health.never }}</b> never synced</a>{% endif %}
     {% if health.stale %}<a class="h-warn" href="#attention"><b>{{ health.stale }}</b> stale</a>{% endif %}
-    {% if health.gone %}<a class="h-warn" href="/repos?flag=gone"><b>{{ health.gone }}</b> gone upstream</a>{% endif %}
+    {% if health.gone %}<a class="h-warn" href="/repos?tab=all&amp;flag=gone"><b>{{ health.gone }}</b> gone upstream</a>{% endif %}
   </span>
 </div>
 {% endif %}

@@ -130,9 +130,16 @@ A repository can also have these tags:
 - `verify failed`: `git fsck` found a problem in the mirror. If GitHub still
   has the repository, move the mirror folder away and select **Sync now**.
 
-The Repositories page has search, filters, sort and actions for the checked
-rows (backup on, backup off, sync now). The address of a filtered list can be
-kept as a bookmark. Select a repository name to see its facts, its sync
+The Repositories page has four tabs:
+
+- **Active**: your repositories with the backup on.
+- **Other**: your repositories with the backup off.
+- **Watched**: public repositories of other people that you watch.
+- **All**: all repositories. The links on the Dashboard open this tab.
+
+Each tab has search, filters, sort and actions for the checked rows (backup on,
+backup off, sync now). When you turn the backup on or off, the rows move to the
+other tab. The address of a filtered list can be kept as a bookmark. Select a repository name to see its facts, its sync
 history, the last error in full, and the restore command.
 
 ## Watch public repositories
@@ -140,8 +147,9 @@ history, the last error in full, and the restore command.
 You can mirror public repositories that are not yours. These repositories have
 the tag `watched` on the **Repositories** page.
 
-**Add one repository.** On the **Repositories** page, type the name or the URL
-in the field "Watch a public repository" and select **Add**. These forms are
+**Add one repository.** On the **Repositories** page, open the **Watched** tab,
+type the name or the URL in the field "Watch a public repository" and select
+**Add**. These forms are
 accepted:
 
 - `owner/name`
