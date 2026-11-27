@@ -17,10 +17,21 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements*.txt
-      - run: pip install -r requirements-dev.txt
+          cache-dependency-path: requirements*
+      - run: pip install -r requirements-dev.txt -c requirements.lock
       - run: ruff check .
       - run: pytest
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # Fails on a known vulnerability in a locked package. --no-deps: the lock
+      # is complete, so pip-audit reads the pins and does not resolve again.
+      - run: pipx run pip-audit -r requirements.lock --no-deps
 
   docker:
     runs-on: ubuntu-latest

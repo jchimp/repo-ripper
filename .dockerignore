@@ -1,0 +1,36 @@
+# The Dockerfile copies only requirements.txt, requirements.lock and app/.
+# Everything below stays out of the build context: a faster build, and no
+# secrets or backup data sent to the Docker daemon.
+
+# Git and tooling
+.git
+.gitignore
+.github/
+.claude/
+.review/
+.jrepoignore
+
+# Secrets (keep .env.example out too; the image does not need it)
+.env
+.env.*
+
+# Data and mirrors
+data/
+
+# Virtualenvs and caches
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Not needed in the image
+tests/
+docs/
+*.md
+LICENSE
+pyproject.toml
+requirements-dev.txt
+docker-compose.yml
+Dockerfile
+.dockerignore
