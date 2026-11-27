@@ -110,7 +110,9 @@ Do one of these:
 - **Pull mirrors** makes a `git clone --mirror` the first time, then runs
   `git remote update --prune`, for each repository that has the backup on. It
   mirrors 4 repositories at the same time. You can set 1 to 8 in Settings,
-  section "Sync". One repository that fails does not stop the others.
+  section "Sync". One repository that fails does not stop the others. A
+  branch or a tag that is deleted or force-pushed on GitHub loses its name in
+  the mirror, but its commits stay in the mirror. See [Restore](#restore).
 - **Protection copy** runs `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`.
   With `--delete` on, the copy is an exact replica.
 - **Verify mirrors** runs `git fsck` on each mirror on disk, one time each
@@ -193,8 +195,10 @@ very large number of issues. Turn it on for a repository if you want it.
 A fine-grained PAT needs these read-only permissions: **Contents** and
 **Metadata** for the git mirrors, plus **Issues** and **Pull requests** for the
 metadata capture. Add the private repos you want it to reach. Classic PATs need the `repo` scope for
-private repos. The token is passed to git per-command via `http.extraHeader`, so
-it is never written into the mirrors' config on the NAS.
+private repos. The token goes to each git command through the environment, as
+an `http.https://github.com/.extraHeader` value. So it is never written into
+the mirrors' config on the NAS, it is not in the process list, and git sends
+it only to `github.com`.
 
 Enter the token in the setup wizard or in Settings. The app stores it encrypted
 in its database, with a key made from `SECRET_KEY`, and never shows it again.
@@ -359,6 +363,56 @@ Mirrors are plain bare repos. To restore any project:
 ```bash
 git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
 ```
+
+### Recover a deleted branch or an overwritten commit
+
+The list of branches and tags in a mirror is the list on GitHub. If a branch
+or a tag is deleted on GitHub, or a force-push replaces its commits, the next
+pull job removes the old name from the mirror. The commits stay in the mirror:
+repo-ripper sets each mirror so that git never removes them
+(`gc.pruneExpire=never`). Thus a mirror does not get smaller.
+
+Each update writes the names that were lost to a text file in the mirror:
+
+```
+/mnt/nas/git-mirrors/<owner>/<repo>.git/repo-ripper-lost-refs.log
+```
+
+Each line has the time (UTC), `deleted` or `forced`, the name, and the old
+commit id. A `forced` line also has the new id. Example:
+
+```
+2026-11-26T03:30:12Z deleted refs/heads/topic 5f0c1e2...
+2026-11-27T03:30:09Z forced refs/heads/main 91ab34c... 0d77e5a...
+```
+
+To get the commits back, clone the mirror, then fetch the old id and give it
+a branch name. These commands do not change the mirror:
+
+```bash
+git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
+cd <repo>
+git fetch origin <old id>
+git branch recovered <old id>
+```
+
+You can also give the commit a branch name in the mirror and then clone:
+
+```bash
+git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git branch recovered <old id>
+git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
+```
+
+The next pull job removes the name `recovered` from the mirror again, because
+the name is not on GitHub. The commits stay.
+
+The file does not list the `refs/pull/<number>/merge` names. GitHub makes
+these test merges again each time the target branch changes.
+
+`git --git-dir <mirror> reflog show <branch>` also shows old commit ids of a
+branch that was force-pushed. It does not show the commit that the first
+clone stored, and git removes this record when the branch is deleted. Use the
+log file as the full record.
 
 ## Security
 
