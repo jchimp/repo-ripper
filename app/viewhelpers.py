@@ -101,25 +101,31 @@ def _axis_label(value_bytes: float, unit: str) -> str:
     return f"{number:g} {unit}"
 
 
-def size_chart(points: Sequence[tuple[float, int]]) -> Markup | None:
-    """Render the mirror size over time as an inline SVG.
+def size_chart(times: Sequence[float],
+               series: Sequence[tuple[str, str, Sequence[int | None]]]) -> Markup | None:
+    """Render sizes over time as an inline SVG with one line for each series.
 
     The SVG has no viewBox: horizontal positions are percentages and vertical
     positions are pixels, so the text keeps its size at every page width.
-    Colours come from CSS classes only.
+    Colours come from CSS classes only (`s-<key>`).
 
     Args:
-        points: (unix time, total bytes), oldest first.
+        times: Unix times of the points, oldest first.
+        series: (label, key, values) for each line. `values` has one value for
+            each time; None means "not measured" and leaves a gap. With one
+            line only, it also gets a filled area (with more, an area would
+            read as a stacked chart).
 
     Returns:
         The SVG, or None when there are fewer than 2 points (the caller shows
         the empty state).
     """
-    if len(points) < 2:
+    if len(times) < 2:
         return None
-    t0, t1 = points[0][0], points[-1][0]
+    t0, t1 = times[0], times[-1]
     span = max(t1 - t0, 1.0)
-    top, unit, step = _nice_axis(max(size for _, size in points))
+    measured = [v for _, _, values in series for v in values if v is not None]
+    top, unit, step = _nice_axis(max(measured, default=0))
 
     def x_of(ts: float) -> float:
         return (ts - t0) / span * 100
@@ -132,8 +138,13 @@ def size_chart(points: Sequence[tuple[float, int]]) -> Markup | None:
         fmt = "%Y-%m-%d" if span >= 2 * 86400 else "%Y-%m-%d %H:%M"
         return time.strftime(fmt, time.localtime(ts))
 
-    label = (f"Mirror size over time. {len(points)} pull jobs from {day(t0)} to {day(t1)}. "
-             f"First {_fmt_size(points[0][1])}, latest {_fmt_size(points[-1][1])}.")
+    def latest(values: Sequence[int | None]) -> int | None:
+        return next((v for v in reversed(values) if v is not None), None)
+
+    latest_text = ", ".join(f"{name.lower()} {_fmt_size(latest(values))}"
+                            for name, _, values in series)
+    label = (f"Storage size over time. {len(times)} pull jobs from {day(t0)} to {day(t1)}. "
+             f"Latest: {latest_text}.")
     out: list[str] = [
         Markup('<svg class="chart" width="100%" height="{}" role="img" aria-label="{}">'
                '<title>{}</title>').format(_CHART_H, label, label)
@@ -153,30 +164,51 @@ def size_chart(points: Sequence[tuple[float, int]]) -> Markup | None:
     out.append('</g>')
 
     # The plot is a nested SVG that stretches: x 0-1000, y 0-100.
-    coords = [(x_of(ts) * 10, y_of(size)) for ts, size in points]
-    line = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f} {y:.2f}" for i, (x, y) in enumerate(coords))
-    area = f"{line} L{coords[-1][0]:.1f} 100 L{coords[0][0]:.1f} 100 Z"
     out.append(f'<svg x="0" y="{_PLOT_TOP}" width="100%" height="{_PLOT_H}" '
-               'viewBox="0 0 1000 100" preserveAspectRatio="none" overflow="visible">'
-               f'<path class="chart-area" d="{area}"/>'
-               f'<path class="chart-line" d="{line}"/></svg>')
+               'viewBox="0 0 1000 100" preserveAspectRatio="none" overflow="visible">')
+    drawn = [s for s in series if any(v is not None for v in s[2])]
+    for _, key, values in drawn:
+        # One path; a gap (None) starts a new piece with "M".
+        parts: list[str] = []
+        first_x = last_x = None
+        pen_down = False
+        for ts, size in zip(times, values, strict=True):
+            if size is None:
+                pen_down = False
+                continue
+            x, y = x_of(ts) * 10, y_of(size)
+            parts.append(f"{'L' if pen_down else 'M'}{x:.1f} {y:.2f}")
+            pen_down = True
+            first_x = x if first_x is None else first_x
+            last_x = x
+        if not parts:
+            continue
+        line = " ".join(parts)
+        if len(drawn) == 1 and all(v is not None for v in values):
+            out.append(f'<path class="chart-area s-{key}" '
+                       f'd="{line} L{last_x:.1f} 100 L{first_x:.1f} 100 Z"/>')
+        out.append(f'<path class="chart-line s-{key}" d="{line}"/>')
+    out.append('</svg>')
 
     # Points: a larger invisible circle makes the hover target.
     out.append('<g class="chart-points">')
-    shown = points if len(points) <= _MAX_DOTS else points[-1:]
-    for ts, size in shown:
-        cy = _PLOT_TOP + _PLOT_H * y_of(size) / 100
-        tip = f"{_fmt_time(ts)}: {_fmt_size(size)}"
-        out.append(f'<g class="chart-pt"><title>{escape(tip)}</title>'
-                   f'<circle class="chart-hit" cx="{x_of(ts):.2f}%" cy="{cy:.1f}" r="10"/>'
-                   f'<circle class="chart-dot" cx="{x_of(ts):.2f}%" cy="{cy:.1f}" r="4"/></g>')
+    for name, key, values in series:
+        pairs = [(ts, v) for ts, v in zip(times, values, strict=True) if v is not None]
+        shown = pairs if len(times) <= _MAX_DOTS else pairs[-1:]
+        for ts, size in shown:
+            cy = _PLOT_TOP + _PLOT_H * y_of(size) / 100
+            tip = f"{_fmt_time(ts)}: {name} {_fmt_size(size)}"
+            out.append(f'<g class="chart-pt s-{key}"><title>{escape(tip)}</title>'
+                       f'<circle class="chart-hit" cx="{x_of(ts):.2f}%" cy="{cy:.1f}" r="10"/>'
+                       f'<circle class="chart-dot" cx="{x_of(ts):.2f}%" cy="{cy:.1f}" r="4"/>'
+                       '</g>')
     out.append('</g>')
 
     # Time axis: first and last date, and the middle when there is room.
     y = _CHART_H - 8
     out.append('<g class="chart-axis">')
     out.append(f'<text class="chart-label" x="0" y="{y}">{day(t0)}</text>')
-    if len(points) > 2 and span >= 4 * 86400:
+    if len(times) > 2 and span >= 4 * 86400:
         out.append(f'<text class="chart-label" x="50%" y="{y}" text-anchor="middle">'
                    f'{day(t0 + span / 2)}</text>')
     out.append(f'<text class="chart-label" x="100%" y="{y}" text-anchor="end">{day(t1)}</text>')

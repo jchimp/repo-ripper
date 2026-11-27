@@ -21,6 +21,7 @@ from .routes import (
     repos,
     settings,
     setup,
+    storage,
     watch,
 )
 from .routes import metadata as metadata_routes
@@ -76,6 +77,6 @@ app.include_router(health.router)
 app.include_router(auth_routes.router)
 
 # Private routers: add new feature routers to this tuple.
-for _module in (dashboard, job_runs, repos, settings, setup, folders, watch,
+for _module in (dashboard, job_runs, repos, storage, settings, setup, folders, watch,
                 metadata_routes, browse):
     app.include_router(_module.router, dependencies=[Depends(auth.require_user)])

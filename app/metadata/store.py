@@ -238,6 +238,38 @@ def rebuild_index(full_name: str) -> list[dict]:
     return entries
 
 
+def _tree_bytes(folder: Path, skip: frozenset[str] = frozenset()) -> int:
+    total = 0
+    with os.scandir(folder) as entries:
+        for entry in entries:
+            if entry.name in skip:
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                total += _tree_bytes(Path(entry.path))
+            elif entry.is_file(follow_symlinks=False):
+                total += entry.stat(follow_symlinks=False).st_size
+    return total
+
+
+def meta_bytes(full_name: str) -> int | None:
+    """Return the size of the metadata folder without `assets/`, or None.
+
+    The release files in `assets/` have their own size (`repos.assets_bytes`).
+    Jobs call this; pages never do, because it reads every file entry on the NAS.
+
+    Returns:
+        The size in bytes, 0 when the folder does not exist yet, or None when
+        the folder cannot be read.
+    """
+    folder = meta_dir(full_name)
+    if not folder.is_dir():
+        return 0
+    try:
+        return _tree_bytes(folder, frozenset({"assets"}))
+    except OSError:
+        return None
+
+
 # --- read API ---------------------------------------------------------------
 
 def has_metadata(full_name: str) -> bool:

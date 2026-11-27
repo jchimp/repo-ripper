@@ -91,8 +91,6 @@ def dashboard(request: Request):
         "live_jobs": viewhelpers.live_jobs(),
         "running_types": {key for key in jobs.JOBS if jobs.is_running(key)},
         "history": history,
-        "chart": viewhelpers.size_chart([(h["recorded_at"], h["total_bytes"])
-                                         for h in history]),
     })
 
 
@@ -116,14 +114,20 @@ def _wait_for_start(last_id: int) -> None:
         time.sleep(0.05)
 
 
+# Pages that "Run now" may return to (?back=...). A fixed map: the target of a
+# redirect never comes from the request as-is.
+_RUN_BACK = {"storage": "/storage"}
+
+
 @router.post("/run/{job_type}")
-def run_now(request: Request, job_type: str):
+def run_now(request: Request, job_type: str, back: str = ""):
     if job_type in jobs.JOBS:
         last_id = db.max_job_id()
         scheduler.trigger_now(job_type)
         _wait_for_start(last_id)
+    target = _RUN_BACK.get(back, "/")
     if request.headers.get("HX-Request"):
         resp = Response(status_code=204)
-        resp.headers["HX-Redirect"] = "/"
+        resp.headers["HX-Redirect"] = target
         return resp
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse(target, status_code=303)

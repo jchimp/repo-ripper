@@ -300,14 +300,15 @@ def list_repos_for_metadata() -> list[sqlite3.Row]:
 
 
 def record_metadata_result(full_name: str, status: str, message: str,
-                           issues: int | None, pulls: int | None) -> None:
-    """Store the result of a metadata capture. A count of None keeps the old count."""
+                           issues: int | None, pulls: int | None,
+                           size_bytes: int | None = None) -> None:
+    """Store the result of a metadata capture. A count or size of None keeps the old value."""
     with get_conn() as conn:
         conn.execute(
             "UPDATE repos SET meta_sync_at = ?, meta_status = ?, meta_message = ?, "
-            "meta_issues = COALESCE(?, meta_issues), meta_pulls = COALESCE(?, meta_pulls) "
-            "WHERE full_name = ?",
-            (time.time(), status, message, issues, pulls, full_name),
+            "meta_issues = COALESCE(?, meta_issues), meta_pulls = COALESCE(?, meta_pulls), "
+            "meta_bytes = COALESCE(?, meta_bytes) WHERE full_name = ?",
+            (time.time(), status, message, issues, pulls, size_bytes, full_name),
         )
 
 
@@ -668,13 +669,28 @@ def job_repo_results(job_id: int) -> list[sqlite3.Row]:
 
 
 def add_history_snapshot(job_id: int, repo_count: int, ok: int, fail: int,
-                         total_bytes: int) -> None:
+                         total_bytes: int, meta_bytes: int | None = None,
+                         assets_bytes: int | None = None) -> None:
+    """Add one row of the size history. `total_bytes` is the code (the mirrors)."""
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO sync_history (job_id, recorded_at, repo_count, ok_count, "
-            "fail_count, total_bytes) VALUES (?, ?, ?, ?, ?, ?)",
-            (job_id, time.time(), repo_count, ok, fail, total_bytes),
+            "fail_count, total_bytes, meta_bytes, assets_bytes) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, time.time(), repo_count, ok, fail, total_bytes, meta_bytes, assets_bytes),
         )
+
+
+def size_totals(repos: list[sqlite3.Row]) -> dict[str, int | None]:
+    """Add up the three stored sizes of the repositories.
+
+    A total is None when no repository has a value for it yet (not measured).
+    """
+    def total(key: str) -> int | None:
+        values = [r[key] for r in repos if r[key] is not None]
+        return sum(values) if values else None
+    return {"code": total("size_bytes"), "meta": total("meta_bytes"),
+            "assets": total("assets_bytes")}
 
 
 def history_snapshots(limit: int = 90) -> list[sqlite3.Row]:

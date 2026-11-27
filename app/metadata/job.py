@@ -1,6 +1,6 @@
 """The scheduled job that captures metadata for every selected repository."""
 from .. import db, jobs, notify, runtime, storage_guard
-from . import capture
+from . import capture, store
 from .client import GitHubClient, format_time
 
 JOB_KEY = "metadata"
@@ -54,7 +54,12 @@ def _capture_all() -> tuple[str, int, int, str, str]:
                 # An invalid name or an answer from GitHub that the code does
                 # not expect. One repository must not stop the others.
                 res = capture.CaptureResult("error", f"{type(exc).__name__}: {exc}")
-            db.record_metadata_result(name, res.status, res.message, res.issues, res.pulls)
+            try:
+                size = store.meta_bytes(name)
+            except ValueError:  # an invalid name: capture_repo reported it already
+                size = None
+            db.record_metadata_result(name, res.status, res.message, res.issues, res.pulls,
+                                      size)
             lines.append(f"[{res.status}] {name} — {res.message}")
             fetched += res.fetched
             if res.status == "rate_limited":
