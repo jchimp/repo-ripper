@@ -1,5 +1,5 @@
 """The scheduled job that downloads release files for the selected repositories."""
-from .. import db, jobs, notify, runtime
+from .. import db, jobs, notify, runtime, storage_guard
 from . import assets
 from . import job as _metadata_job  # noqa: F401  (its job shows first: it runs first)
 from .client import GitHubClient, format_time
@@ -55,6 +55,10 @@ def run_assets_job() -> None:
                 jid, "skipped", 0, 0,
                 "No repository has the release files switch on. Turn it on in the "
                 "Repositories table (the repository also needs the metadata switch).", "")
+            return
+        problem = storage_guard.mirror_problem()
+        if problem:
+            jobs.refuse(jid, JOB_KEY, problem)
             return
         try:
             status, ok, fail, summary, detail = _download_all(jid, repos)

@@ -20,6 +20,7 @@ from . import (
     protection,
     runtime,
     setup_state,
+    storage_guard,
     watch,
 )
 
@@ -68,101 +69,128 @@ def _skip(job_type: str) -> None:
     db.finish_job(jid, "skipped", 0, 0, "Already running — skipped", "")
 
 
+def refuse(jid: int, job_type: str, summary: str) -> None:
+    """Close a job run that must not do its work, as an error with a notification.
+
+    Args:
+        jid: The id of the open job run.
+        job_type: The job key, for the notification.
+        summary: The reason, in plain text for the user.
+    """
+    db.finish_job(jid, "error", 0, 1, summary, "")
+    notify.notify_job(job_type, False, summary)
+
+
 def run_scan_job() -> None:
     lock = _LOCKS["scan"]
     if not lock.acquire(blocking=False):
         return _skip("scan")
     try:
         jid = db.start_job("scan")
-        # Keeps the token-health banner on the dashboard current. Never raises.
-        setup_state.refresh_token_check()
-        # The scan has independent parts: the token's own list, then each
-        # watched owner. A failed part does not stop the other parts.
-        found = added = parts_ok = parts_failed = 0
-        notes: list[str] = []
-        lines: list[str] = []
+        try:
+            # Keeps the token-health banner on the dashboard current. Never raises.
+            setup_state.refresh_token_check()
+            # The scan has independent parts: the token's own list, then each
+            # watched owner. A failed part does not stop the other parts.
+            found = added = parts_ok = parts_failed = 0
+            notes: list[str] = []
+            lines: list[str] = []
 
-        if not runtime.github_token():
-            notes.append("My repositories: skipped, because no GitHub token is set.")
-            lines.append("[skipped] my repositories — no GitHub token is set")
-        else:
-            try:
-                # The full listing, with no filter: the upstream check below
-                # must see forks and archived repositories also when the
-                # settings leave them out of the backup.
-                listing = github.list_all_repos(include_forks=True, include_archived=True)
-            except Exception as exc:
+            if not runtime.github_token():
+                notes.append("My repositories: skipped, because no GitHub token is set.")
+                lines.append("[skipped] my repositories — no GitHub token is set")
+            else:
+                try:
+                    # The full listing, with no filter: the upstream check below
+                    # must see forks and archived repositories also when the
+                    # settings leave them out of the backup.
+                    listing = github.list_all_repos(include_forks=True, include_archived=True)
+                except Exception as exc:
+                    parts_failed += 1
+                    notes.append(f"My repositories: failed ({exc})")
+                    lines.append(f"[error] my repositories — {exc}")
+                else:
+                    # A name from the API becomes a folder name. The same
+                    # check as for watched repositories. The upstream check
+                    # below must not see such a name either: it moves folders.
+                    unsafe = [r for r in listing
+                              if not watch.safe_full_name(str(r.get("full_name") or ""))]
+                    if unsafe:
+                        listing = [r for r in listing if r not in unsafe]
+                        notes.append(f"Skipped {len(unsafe)} with a name that is not "
+                                     "a valid owner/name.")
+                        lines.extend(f"[skipped] {r.get('full_name')!r} — the name is not "
+                                     "a valid owner/name. It is not added."
+                                     for r in unsafe)
+                    include_forks = db.get_bool("include_forks")
+                    include_archived = db.get_bool("include_archived")
+                    repos = [r for r in listing
+                             if (include_forks or not r.get("fork"))
+                             and (include_archived or not r.get("archived"))]
+                    now = time.time()
+                    new = 0
+                    # Applies to NEW rows only: a known repository keeps its switch.
+                    auto_enable = db.get_bool("auto_enable_new", True)
+                    for r in repos:
+                        new += db.upsert_repo({
+                            "full_name": r["full_name"],
+                            "private": r["private"],
+                            "fork": r["fork"],
+                            "archived": r["archived"],
+                            "default_branch": r["default_branch"],
+                            "mirror_path": f"{r['full_name']}.git",
+                            "discovered_at": now,
+                            "source": "mine",
+                        }, enabled=auto_enable)
+                    parts_ok += 1
+                    found += len(repos)
+                    added += new
+                    lines.append(f"[ok] my repositories — {len(repos)} found, {new} new")
+                    # Renamed and gone repositories. Only after a successful listing.
+                    upstream_summary, upstream_detail = reconcile_upstream(listing)
+                    if upstream_summary:
+                        notes.append(f"Upstream changes{upstream_summary}.")
+                    if upstream_detail:
+                        lines.append(upstream_detail)
+
+            owners_failed = 0
+            rate_limited: github.RateLimited | None = None
+            for owner in db.list_watch_owners():
+                label = f"watched owner {owner['login']}"
+                try:
+                    # After a rate-limit answer each more call fails the same
+                    # way and uses up nothing but time.
+                    if rate_limited:
+                        raise rate_limited
+                    o_found, o_new = watch.discover_owner(owner)
+                except github.RateLimited as exc:
+                    rate_limited = exc
+                    error = str(exc)
+                except github.GitHubError as exc:
+                    error = str(exc)
+                else:
+                    db.record_watch_owner_scan(owner["id"], None)
+                    parts_ok += 1
+                    found += o_found
+                    added += o_new
+                    lines.append(f"[ok] {label} — {o_found} found, {o_new} new")
+                    continue
+                db.record_watch_owner_scan(owner["id"], error)
                 parts_failed += 1
-                notes.append(f"My repositories: failed ({exc})")
-                lines.append(f"[error] my repositories — {exc}")
-            else:
-                include_forks = db.get_bool("include_forks")
-                include_archived = db.get_bool("include_archived")
-                repos = [r for r in listing
-                         if (include_forks or not r.get("fork"))
-                         and (include_archived or not r.get("archived"))]
-                now = time.time()
-                new = 0
-                # Applies to NEW rows only: a known repository keeps its switch.
-                auto_enable = db.get_bool("auto_enable_new", True)
-                for r in repos:
-                    new += db.upsert_repo({
-                        "full_name": r["full_name"],
-                        "private": r["private"],
-                        "fork": r["fork"],
-                        "archived": r["archived"],
-                        "default_branch": r["default_branch"],
-                        "mirror_path": f"{r['full_name']}.git",
-                        "discovered_at": now,
-                        "source": "mine",
-                    }, enabled=auto_enable)
-                parts_ok += 1
-                found += len(repos)
-                added += new
-                lines.append(f"[ok] my repositories — {len(repos)} found, {new} new")
-                # Renamed and gone repositories. Only after a successful listing.
-                upstream_summary, upstream_detail = reconcile_upstream(listing)
-                if upstream_summary:
-                    notes.append(f"Upstream changes{upstream_summary}.")
-                if upstream_detail:
-                    lines.append(upstream_detail)
+                owners_failed += 1
+                lines.append(f"[error] {label} — {error}")
+            if owners_failed:
+                notes.append(f"Watched owners that failed: {owners_failed}.")
 
-        owners_failed = 0
-        rate_limited: github.RateLimited | None = None
-        for owner in db.list_watch_owners():
-            label = f"watched owner {owner['login']}"
-            try:
-                # After a rate-limit answer each more call fails the same
-                # way and uses up nothing but time.
-                if rate_limited:
-                    raise rate_limited
-                o_found, o_new = watch.discover_owner(owner)
-            except github.RateLimited as exc:
-                rate_limited = exc
-                error = str(exc)
-            except github.GitHubError as exc:
-                error = str(exc)
+            if parts_failed == 0:
+                status = "ok"
             else:
-                db.record_watch_owner_scan(owner["id"], None)
-                parts_ok += 1
-                found += o_found
-                added += o_new
-                lines.append(f"[ok] {label} — {o_found} found, {o_new} new")
-                continue
-            db.record_watch_owner_scan(owner["id"], error)
-            parts_failed += 1
-            owners_failed += 1
-            lines.append(f"[error] {label} — {error}")
-        if owners_failed:
-            notes.append(f"Watched owners that failed: {owners_failed}.")
-
-        if parts_failed == 0:
-            status = "ok"
-        else:
-            status = "partial" if parts_ok else "error"
-        summary = " ".join([f"Discovered {found} repositories ({added} new).", *notes])
-        db.finish_job(jid, status, found, parts_failed, summary, "\n".join(lines))
-        notify.notify_job("scan", parts_failed == 0, summary)
+                status = "partial" if parts_ok else "error"
+            summary = " ".join([f"Discovered {found} repositories ({added} new).", *notes])
+            db.finish_job(jid, status, found, parts_failed, summary, "\n".join(lines))
+            notify.notify_job("scan", parts_failed == 0, summary)
+        except Exception as exc:
+            _crash(jid, "scan", exc)
     finally:
         lock.release()
 
@@ -417,6 +445,10 @@ def run_pull_job() -> None:
     try:
         jid = db.start_job("pull")
         try:
+            problem = storage_guard.mirror_problem()
+            if problem:
+                refuse(jid, "pull", problem)
+                return
             enabled = db.list_repos(enabled_only=True)
             # A gone repository fails every time. Its mirror is kept as it is.
             repos = [r for r in enabled if r["upstream_state"] != "gone"]
@@ -461,12 +493,15 @@ def prepare_selected_sync(repo_ids: list[int]) -> tuple[int, list[int]]:
         (job run id, ids of the repositories that were reserved).
 
     Raises:
-        SyncRefused: The full pull job runs, nothing was selected, or every
-            selected repository is in work.
+        SyncRefused: The full pull job runs, the mirror folder is not good,
+            nothing was selected, or every selected repository is in work.
     """
     if is_running("pull"):
         raise SyncRefused("The pull job is running now. It syncs every repository. "
                           "Wait until it is done, then try again.")
+    problem = storage_guard.mirror_problem()
+    if problem:
+        raise SyncRefused(problem)
     repos = db.get_repos(repo_ids)
     if not repos:
         raise SyncRefused("Select one repository or more first.")
@@ -525,6 +560,10 @@ def run_verify_job() -> None:
     try:
         jid = db.start_job("verify")
         try:
+            problem = storage_guard.mirror_problem()
+            if problem:
+                refuse(jid, "verify", problem)
+                return
             # Every mirror on disk, also with the backup off or gone upstream:
             # those are the copies that cannot be made again.
             repos = [r for r in db.list_repos()
@@ -579,27 +618,58 @@ def run_verify_job() -> None:
         lock.release()
 
 
+# Jobs that write to the mirror folder. rsync must not copy a repository
+# while git or a download changes it.
+_MIRROR_WRITERS = ("pull", "metadata", "assets")
+
+
+def _protection_refusal(delete: bool) -> str | None:
+    """Return why the protection copy must not run, or None."""
+    problem = storage_guard.mirror_problem() or storage_guard.protection_problem()
+    if problem:
+        return f"{problem} The protection copy did not run."
+    # Without "delete" rsync removes nothing, so a mirror folder with few
+    # repositories cannot damage the copy.
+    return storage_guard.missing_mirrors_problem() if delete else None
+
+
 def run_protection_job() -> None:
     lock = _LOCKS["protection"]
     if not lock.acquire(blocking=False):
         return _skip("protection")
     try:
         jid = db.start_job("protection")
-        if setup_state.protection_skipped():
-            # The owner chose "no protection copy" in the setup. Without this
-            # guard, "Run now" would copy to the fallback folder on local disk.
-            db.finish_job(jid, "skipped", 0, 0,
-                          "The protection copy is turned off. To use it, select a "
-                          "protection folder in Settings, Storage.", "")
-            return
-        delete = db.get_bool("protection_delete")
-        success, detail = protection.run_protection_copy(delete=delete)
-        status = "ok" if success else "error"
-        summary = ("Protection copy complete" if success
-                   else "Protection copy failed")
-        db.finish_job(jid, status, 1 if success else 0, 0 if success else 1,
-                      summary, detail)
-        notify.notify_job("protection", success, summary)
+        try:
+            if setup_state.protection_skipped():
+                # The owner chose "no protection copy" in the setup. Without this
+                # guard, "Run now" would copy to the fallback folder on local disk.
+                db.finish_job(jid, "skipped", 0, 0,
+                              "The protection copy is turned off. To use it, select a "
+                              "protection folder in Settings, Storage.", "")
+                return
+            delete = db.get_bool("protection_delete")
+            problem = _protection_refusal(delete)
+            if problem:
+                refuse(jid, "protection", problem)
+                return
+            busy = [JOBS[key].label if key in JOBS else key
+                    for key in _MIRROR_WRITERS if is_running(key)]
+            if busy:
+                names = ", ".join(f"'{label}'" for label in busy)
+                db.finish_job(jid, "skipped", 0, 0,
+                              f"A job that writes to the mirror folder runs now: {names}. "
+                              "The protection copy did not run. Start it again when "
+                              "that job is done.", "")
+                return
+            success, detail = protection.run_protection_copy(delete=delete)
+            status = "ok" if success else "error"
+            summary = ("Protection copy complete" if success
+                       else "Protection copy failed")
+            db.finish_job(jid, status, 1 if success else 0, 0 if success else 1,
+                          summary, detail)
+            notify.notify_job("protection", success, summary)
+        except Exception as exc:
+            _crash(jid, "protection", exc)
     finally:
         lock.release()
 
