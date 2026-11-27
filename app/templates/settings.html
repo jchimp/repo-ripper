@@ -34,6 +34,25 @@
       releases. It stores them as JSON files next to each mirror. To stop the capture for
       one repository, use the Metadata switch on the Repositories page.
     </div>
+    <h3 class="sub-h">Release files</h3>
+    <div class="hint" style="margin-bottom:12px">
+      The job "Download release files" stores the files that are attached to a release
+      (build zips, installers) and GitHub's source archives (.zip and .tar.gz). It is off
+      for each repository until you turn on its "Release files" switch on the
+      Repositories page.
+    </div>
+    <div class="field cron">
+      <label for="assets_keep_releases">Newest releases for each repository</label>
+      <input type="number" id="assets_keep_releases" name="assets_keep_releases"
+             min="0" step="1" value="{{ assets_keep_releases }}">
+      <div class="hint">Only this number of the newest releases get downloads. 0 = all releases.</div>
+    </div>
+    <div class="field cron">
+      <label for="assets_max_mb">Largest file (MB)</label>
+      <input type="number" id="assets_max_mb" name="assets_max_mb"
+             min="1" step="1" value="{{ assets_max_mb }}">
+      <div class="hint">A larger file is not stored. 1024 = 1 GB, 2048 = 2 GB.</div>
+    </div>
   </div>
 
   <div class="form-section">

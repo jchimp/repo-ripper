@@ -1,8 +1,43 @@
 {% extends "browse_base.html" %}
 {% import "_browse_macros.html" as mac %}
+{% macro file_row(f) %}
+<li>
+  {% if f.url %}<a class="repo-name" href="{{ f.url }}" download>{{ f.name }}</a>
+  {% else %}<span class="repo-name">{{ f.name }}</span>{% endif %}
+  {% if f.size is not none %}<span class="muted">{{ f.size | fmt_size }}</span>{% endif %}
+  {% if f.state == 'stored' %}
+    <span class="tag tag-ok"{% if f.sha256 %} title="SHA-256 {{ f.sha256 }}"{% endif %}>stored{{ ', checksum ok' if f.verified }}</span>
+  {% elif f.state == 'too_large' %}
+    <span class="tag tag-warn" title="Larger than the size limit in Settings, section Metadata.">too large, not stored</span>
+  {% elif f.state == 'failed' %}
+    <span class="tag tag-fail" title="{{ f.error }}">download failed</span>
+  {% else %}
+    <span class="tag">not downloaded</span>
+  {% endif %}
+  {% if f.removed %}<span class="tag tag-warn" title="GitHub does not list this file any more. The local copy is kept.">removed upstream</span>{% endif %}
+</li>
+{% endmacro %}
 {% block browse %}
+{% if not assets_on %}
+<div class="notice warn" role="status">
+  <strong>Release files are not downloaded for this repository.</strong>
+  The pages below show names and sizes only.
+  {% if metadata_on %}
+  <form method="post" action="/repos/{{ repo.id }}/assets-toggle" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="releases">
+    <button type="submit" class="small">Turn on release files</button>
+  </form>
+  {% else %}
+  Turn on the metadata switch of this repository first.
+  {% endif %}
+</div>
+{% endif %}
 {% if releases %}
-<p class="hint">repo-ripper stores the name and the size of each release asset. It does not store the asset files.</p>
+{% if assets_on %}
+<p class="hint">The job "Download release files" stores the files of the newest releases.
+  Settings, section Metadata, has the number of releases and the size limit.</p>
+{% endif %}
 {% for item in releases %}
 {% set rel = item.rel %}
 <div class="panel release">
@@ -10,6 +45,7 @@
     <h2>{{ rel.name or rel.tag_name or '(no name)' }}</h2>
     {% if rel.prerelease %}<span class="tag">pre-release</span>{% endif %}
     {% if rel.draft %}<span class="tag">draft</span>{% endif %}
+    {% if item.removed %}<span class="tag tag-warn" title="GitHub does not list this release any more. The stored files are kept.">removed upstream</span>{% endif %}
     <span class="spacer"></span>
     {% if rel.tag_name %}
       {% if item.tag_local %}<a class="repo-name" href="{{ u.code(rev=rel.tag_name) }}">{{ rel.tag_name }}</a>
@@ -23,18 +59,22 @@
     {% if item.html %}
     {# Safe: mdrender.render output. Raw HTML is disabled, links are checked, all text is escaped. #}
     <div class="md">{{ item.html }}</div>
-    {% else %}
+    {% elif not item.removed %}
     <div class="muted">No release notes.</div>
     {% endif %}
-    {% if item.assets %}
-    <h3 class="assets-h">Assets (names only, the files are not stored)</h3>
+    {% if item.files %}
+    <h3 class="assets-h">Attached files</h3>
     <ul class="assets">
-      {% for a in item.assets %}
-      <li><span class="repo-name">{{ a.name or '(no name)' }}</span> <span class="muted">{{ a.size | fmt_size }}</span></li>
-      {% endfor %}
+      {% for f in item.files %}{{ file_row(f) }}{% endfor %}
     </ul>
     {% endif %}
-    {{ mac.github_link(rel.html_url) }}
+    {% if item.source %}
+    <h3 class="assets-h">Source code (GitHub archives)</h3>
+    <ul class="assets">
+      {% for f in item.source %}{{ file_row(f) }}{% endfor %}
+    </ul>
+    {% endif %}
+    {% if rel.html_url %}{{ mac.github_link(rel.html_url) }}{% endif %}
   </div>
 </div>
 {% endfor %}

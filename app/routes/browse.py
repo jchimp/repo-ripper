@@ -23,10 +23,10 @@ from typing import Any
 from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
 
 from .. import db, gitread, highlight, mdrender, runtime
-from ..metadata import store
+from ..metadata import assets, store
 from ..web import render, templates
 
 router = APIRouter()
@@ -841,13 +841,90 @@ def releases_page(request: Request, repo_id: int) -> Response:
         return _state(request, rc, "releases", "no_meta")
     md_ctx = _link_ctx(rc)
     tags = {t.name for t in gitread.list_refs(rc.git_dir).tags} if rc.has_mirror else set()
+    stored = assets.load_index(rc.full_name)["releases"]
+    base = f"/repos/{repo_id}/releases"
     releases = []
+    seen: set[str] = set()
     for rel in store.load_releases(rc.full_name):
         if not isinstance(rel, dict):
             continue
+        rid = str(rel.get("id"))
+        seen.add(rid)
+        local = stored.get(rid, {})
+        files = []
+        listed: set[str] = set()
+        for a in rel.get("assets") or []:
+            if not isinstance(a, dict):
+                continue
+            key = str(a.get("id"))
+            listed.add(key)
+            files.append(_release_file(a.get("name"), a.get("size"),
+                                       local.get("files", {}).get(key),
+                                       f"{base}/{rid}/files/{key}"))
+        # Files that the author removed from the release after they were stored.
+        for key, entry in local.get("files", {}).items():
+            if key not in listed:
+                files.append(_release_file(entry.get("name"), entry.get("size"), entry,
+                                           f"{base}/{rid}/files/{key}", removed=True))
+        source = [_release_file(entry.get("name"), entry.get("size"), entry,
+                                f"{base}/{rid}/source/{kind}")
+                  for kind, entry in local.get("source", {}).items()]
         releases.append({
             "rel": rel, "html": mdrender.render(rel.get("body"), md_ctx),
-            "tag_local": rel.get("tag_name") in tags,
-            "assets": [a for a in rel.get("assets") or [] if isinstance(a, dict)],
+            "tag_local": rel.get("tag_name") in tags, "files": files, "source": source,
         })
-    return _page(request, rc, "browse_releases.html", "releases", {"releases": releases})
+    # Releases that are gone on GitHub but have stored files: keep them visible.
+    for rid, local in stored.items():
+        if rid in seen:
+            continue
+        files = [_release_file(e.get("name"), e.get("size"), e, f"{base}/{rid}/files/{k}")
+                 for k, e in local.get("files", {}).items()]
+        source = [_release_file(e.get("name"), e.get("size"), e, f"{base}/{rid}/source/{k}")
+                  for k, e in local.get("source", {}).items()]
+        if any(f["state"] == assets.STATE_STORED for f in files + source):
+            releases.append({
+                "rel": {"name": local.get("name"), "tag_name": local.get("tag_name"),
+                        "published_at": local.get("published_at")},
+                "html": "", "tag_local": local.get("tag_name") in tags,
+                "files": files, "source": source, "removed": True,
+            })
+    return _page(request, rc, "browse_releases.html", "releases", {
+        "releases": releases, "assets_on": bool(rc.row["assets_enabled"]),
+        "metadata_on": bool(rc.row["metadata_enabled"]),
+    })
+
+
+def _release_file(name: object, size: object, entry: dict | None, url: str,
+                  removed: bool = False) -> dict:
+    """Template values for one file of a release."""
+    entry = entry if isinstance(entry, dict) else {}
+    state = entry.get("state") or "none"
+    return {
+        "name": str(name or entry.get("name") or "(no name)"),
+        "size": entry.get("size") if state == assets.STATE_STORED else size,
+        "state": state,
+        "url": url if state == assets.STATE_STORED else None,
+        "error": entry.get("error") or "",
+        "sha256": entry.get("sha256") or "",
+        "verified": bool(entry.get("verified")),
+        "removed": removed or bool(entry.get("removed_upstream")),
+    }
+
+
+@router.get("/repos/{repo_id}/releases/{release_id}/{group}/{key}")
+def release_file(request: Request, repo_id: int, release_id: str, group: str,
+                 key: str) -> Response:
+    """Send one stored release file as a download.
+
+    The path on disk comes from the index of stored files, looked up by the
+    release id and the file key. No part of the URL is used as a path.
+    """
+    rc = _load(request, repo_id)
+    path = assets.stored_path(rc.full_name, release_id, group, key)
+    if path is None:
+        raise HTTPException(status_code=404, detail="This file is not stored.")
+    # Always a download with a neutral type: a release file is never shown or
+    # run in the browser.
+    return FileResponse(path, media_type="application/octet-stream", filename=path.name,
+                        headers={"X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox; default-src 'none'"})

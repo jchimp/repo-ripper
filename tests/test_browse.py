@@ -474,7 +474,9 @@ def test_releases_page(web) -> None:
     html = page(client, f"{base}/releases")
     assert "First release" in html and "<strong>bold</strong>" in html
     assert "app.zip" in html and "2.0 KB" in html
-    assert "It does not store the asset files" in html
+    # The switch is off by default: the page says so and lists names only.
+    assert "Release files are not downloaded for this repository." in html
+    assert "not downloaded</span>" in html
     assert f'href="{base}/code?rev=v1.0"' in html
     assert 'title="This tag is not in the mirror.">v0.9' in html
 

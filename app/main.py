@@ -9,6 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth, db, scheduler
 from .config import get_settings
+from .metadata import assets_job as _assets_job  # noqa: F401  (registers the job)
 from .metadata import job as _metadata_job  # noqa: F401  (registers the metadata job)
 from .routes import (
     auth_routes,

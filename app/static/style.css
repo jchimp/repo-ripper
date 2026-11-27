@@ -1002,3 +1002,19 @@ table.hunk-quote { width: 100%; border-bottom: 1px solid var(--line); }
   dl.facts { grid-template-columns: 1fr; gap: 2px; }
   dl.facts dd { margin-bottom: 8px; }
 }
+
+/* --- release files --------------------------------------------------------- */
+
+.meta-line { display: flex; align-items: center; gap: 8px; }
+.meta-line + .meta-line { margin-top: 6px; }
+.meta-line .meta-counts { margin: 0; }
+.toggle:disabled { opacity: 0.45; cursor: not-allowed; }
+.sub-h { font-size: 14px; margin: 20px 0 8px; font-weight: 600; }
+.assets { list-style: none; padding-left: 0; }
+.assets li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+.assets .tag { margin-left: 0; }
+.assets a.repo-name { color: var(--accent); }
+.tag-ok {
+  color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+}
+.notice form.inline { margin-left: 8px; }

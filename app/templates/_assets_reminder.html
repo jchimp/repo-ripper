@@ -1,0 +1,9 @@
+{# Dashboard reminder. Shown while no repository has the release files switch on. #}
+{% if assets_reminder %}
+<div class="notice warn" role="status">
+  <strong>Release files are not downloaded.</strong>
+  The build zips, installers and source archives of releases are not in your backup: the
+  "Release files" switch is off for each repository.
+  <a href="/repos">Turn it on in the Repositories table</a> for the repositories that need it.
+</div>
+{% endif %}
