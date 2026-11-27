@@ -168,7 +168,7 @@ def test_static_urls_carry_a_content_version(client: TestClient) -> None:
 def test_version_shows_in_the_footer(authed: tuple[TestClient, str]) -> None:
     import app as app_package
     client, _token = authed
-    assert app_package.__version__ == "0.2.0"
+    assert app_package.__version__ == "0.3.0"
     assert f"repo-ripper {app_package.__version__}</footer>" in client.get("/settings/storage").text
     # Not on the sign-in page: a visitor without a session learns nothing.
     client.cookies.clear()

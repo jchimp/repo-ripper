@@ -8,54 +8,58 @@ the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
 
+## 0.3.0 (2026-11-27)
+
+The UI work: GitHub-style theme, Jobs page, tabs on the Repositories and
+Settings pages, Storage page (PRs #17, #18, #19, #21, #22).
+
 ### Added
 
 - **Storage page** (`/storage`, new item in the header between Jobs and
   Settings). It shows the two storage folders (path, marker file, used and
   free disk space), the size of code, metadata and release files, the 10
   largest repositories, the protection copy (last run, next run, recent runs,
-  "Run now") and the size history. (PR: storage-page)
+  "Run now") and the size history. (PR #22)
 - The metadata job records the size of each repository's metadata folder
   (without release files). Each pull job also stores the totals of metadata and
   release files in the size history. Migrations `0032_repo_meta_bytes.sql` and
-  `0041_history_sizes.sql`. (PR: storage-page)
+  `0041_history_sizes.sql`. (PR #22)
 - **Tabs on the Settings page**: Storage and token, Discovery, Metadata,
   Schedules, Protection copy and Notifications. Each tab has its own URL
   (`/settings/<tab>`) and its own Save button. `/settings` opens the first tab.
-  (PR: settings-tabs)
+  (PR #21)
 - **Tabs on the Repositories page**: Active (your repositories with the backup
   on, the default), Other (backup off), Watched (public repositories of other
   people) and All. Each tab shows its count. The tab replaces the Source
   filter; the Backup filter shows only on Watched and All. The panel "Watch a
   public repository" is on the Watched tab. The Dashboard links open the All
-  tab. (PR: repo-tabs)
+  tab. (PR #19)
 - **Jobs page** (`/jobs`, new item in the header). It shows the running jobs
   (the same live panel as the Dashboard) and every recorded job run, newest
-  first, 50 on a page. Filters: job and status. (PR: jobs-page)
+  first, 50 on a page. Filters: job and status. (PR #18)
 
 ### Changed
 
 - The chart "Mirror size over time" moved from the Dashboard to the Storage
   page as "Size over time", with one line each for code, metadata and release
   files. The Dashboard card "Mirror size" links to the Storage page.
-  (PR: storage-page)
+  (PR #22)
 - Below 560 px width the page links in the header scroll sideways in one row,
   and the user name is not shown. Before, the links ran off the screen.
-  (PR: storage-page)
+  (PR #22)
 - A save on one Settings tab writes only the values of that tab. Before, the one
   big form set every checkbox that was not in the form to off. "Parallel pulls"
   moved from its own Sync section to the Discovery tab. A bad schedule shows the
   Schedules tab again with the error, and the error boxes are no longer wider
   than the form. The old route `POST /settings` (save all sections) is removed.
-  (PR: settings-tabs)
+  (PR #21)
 - The Dashboard no longer lists the recent job runs. The button "All job runs"
   opens the Jobs page. The page of one job run links back to Jobs, and an
   unknown run number goes to Jobs (was: the Dashboard).
-
 - **The pages look like GitHub**, in a dark and a light version: GitHub's
   colours, buttons, tabs, counters, state labels and code colours. Links are
   blue, the main button is green, the selected tab has an orange line. See
-  `docs/DECISIONS.md`, D-27. (PR: theme-github)
+  `docs/DECISIONS.md`, D-27. (PR #17)
 - Repository tabs, pull request and issue states, and the file list show
   GitHub's icons (Octicons, MIT licence). The icons are inline SVG, so the
   pages still work with no internet connection.
