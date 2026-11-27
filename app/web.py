@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from . import __version__
+from .icons import icon
 
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -63,6 +64,7 @@ templates.env.filters["fmt_time"] = _fmt_time
 templates.env.filters["fmt_size"] = _fmt_size
 templates.env.globals["static_url"] = static_url
 templates.env.globals["app_version"] = __version__
+templates.env.globals["icon"] = icon
 
 
 def csrf_token(request: Request) -> str:

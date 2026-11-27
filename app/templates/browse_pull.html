@@ -4,7 +4,7 @@
 <div class="item-header">
   <h2 class="item-h">{{ pull.title or '(no title)' }} <span class="muted">#{{ number }}</span></h2>
   <div class="item-meta">
-    {{ mac.badge(badge) }}
+    {{ mac.badge(badge, true) }}
     <span><strong>{{ author }}</strong> {{ {'merged': 'merged', 'closed': 'wanted to merge'}.get(badge[1], 'wants to merge') }}
       <span class="branch">{{ head.label or head.ref or 'unknown' }}</span> into
       <span class="branch">{{ base.label or base.ref or 'unknown' }}</span></span>

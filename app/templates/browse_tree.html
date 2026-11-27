@@ -41,9 +41,9 @@
         {% for e in tree.entries %}
         <tr>
           <td>
-            {% if e.kind == 'tree' %}<a class="dir" href="{{ u.tree(e.path) }}">{{ e.name }}/</a>
-            {% elif e.kind == 'blob' %}<a class="file" href="{{ u.blob(e.path) }}">{{ e.name }}</a>
-            {% else %}<span class="submodule" title="Submodule. Its files are in another repository.">{{ e.name }} @ {{ e.oid[:8] }}</span>
+            {% if e.kind == 'tree' %}{{ icon('file-directory-fill') }}<a class="dir" href="{{ u.tree(e.path) }}">{{ e.name }}/</a>
+            {% elif e.kind == 'blob' %}{{ icon('file') }}<a class="file" href="{{ u.blob(e.path) }}">{{ e.name }}</a>
+            {% else %}{{ icon('file-submodule') }}<span class="submodule" title="Submodule. Its files are in another repository.">{{ e.name }} @ {{ e.oid[:8] }}</span>
             {% endif %}
           </td>
           <td class="num">{{ e.size | fmt_size if e.kind == 'blob' and e.size else '' }}</td>

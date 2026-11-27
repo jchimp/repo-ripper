@@ -33,7 +33,7 @@
       {% for it in items %}
       {% set pair = ('merged', 'merged') if it.merged else ('closed', 'closed') if it.state == 'closed' else ('draft', 'draft') if it.draft else ('open', 'open') %}
       <li>
-        {{ mac.badge(pair) }}
+        {{ mac.badge(pair, area == 'pulls') }}
         <div class="item-main">
           <a class="item-title" href="{{ u.page(area ~ '/' ~ it.number) }}">{{ it.title or '(no title)' }}</a>
           {% for lb in it.labels or [] if lb.name %}
