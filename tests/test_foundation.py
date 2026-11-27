@@ -171,3 +171,14 @@ def test_version_shows_in_the_footer(authed: tuple[TestClient, str]) -> None:
     # Not on the sign-in page: a visitor without a session learns nothing.
     client.cookies.clear()
     assert "app-footer" not in client.get("/login").text
+
+
+def test_old_job_runs_are_dropped(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(db, "JOB_RUNS_KEEP", 3)
+    still_running = db.start_job("pull")
+    for _ in range(5):
+        db.finish_job(db.start_job("scan"), "ok", 0, 0, "done", "")
+    newest = db.start_job("scan")
+    ids = [r["id"] for r in db.recent_jobs(50)]
+    # The newest three stay. A run that is in work is never dropped.
+    assert sorted(ids) == [still_running, newest - 2, newest - 1, newest]

@@ -97,7 +97,7 @@ def _download_all(jid: int, repos: list) -> tuple[str, int, int, str, str]:
                 ok += 1
             elif res.status == "partial":
                 partial += 1
-            elif res.status == "rate_limited" or "The disk has" in res.message:
+            elif res.status == "rate_limited" or res.disk_full:
                 stopped = res
                 break
             else:

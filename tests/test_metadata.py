@@ -515,6 +515,18 @@ def test_job_records_a_failed_repository_and_continues(app_fake: FakeGitHub) -> 
     assert repo_row(DEMO)["meta_status"] == "ok"
 
 
+def test_job_leaves_out_a_repository_that_is_gone_upstream(app_fake: FakeGitHub) -> None:
+    enrol("octo/gone", DEMO)
+    db.set_upstream_state(repo_row("octo/gone")["id"], "gone")
+    meta_job.run_metadata_job()
+    run = db.recent_jobs(1)[0]
+    # No daily failure for a repository that GitHub no longer has.
+    assert (run["status"], run["ok_count"], run["fail_count"]) == ("ok", 1, 0)
+    assert repo_row("octo/gone")["meta_status"] is None
+    assert not [p for p in app_fake.paths() if "/octo/gone" in p]
+    assert [r["full_name"] for r in db.list_repos_for_assets()] == []
+
+
 def test_job_is_skipped_when_the_setting_is_off(authed: tuple[TestClient, str],
                                                 fake: FakeGitHub) -> None:
     client, token = authed

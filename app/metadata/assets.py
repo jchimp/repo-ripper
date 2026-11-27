@@ -52,6 +52,7 @@ class AssetsResult:
     files: int = 0              # files on disk after the run
     total_bytes: int = 0
     reset_at: float | None = None
+    disk_full: bool = False     # the job must stop: the next file does not fit
 
 
 def assets_dir(full_name: str) -> Path:
@@ -261,6 +262,7 @@ def sync_repo(client: GitHubClient, full_name: str, *, keep_releases: int,
                 stop = result("rate_limited", str(exc), exc.reset_at)
             except DiskFull as exc:
                 stop = result("error", str(exc))
+                stop.disk_full = True
             except TooLarge:
                 item.update({"state": STATE_TOO_LARGE, "error": "", "limit": max_bytes})
                 too_large += 1
