@@ -5,7 +5,7 @@ Version 0.2.0: the code review fixes (PR #15) are in `main`. Now: the review fol
 
 ## Open Todos
 - [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (PR #15)
-- [ ] Tag `v0.2.0` on `main` after the release PR is merged
+- [x] Tag `v0.2.0` on `main` after the release PR is merged
 - [ ] Review follow-up, by hand in a browser: Settings with a bad schedule, in both themes (the message box can be too wide)
 - [ ] Review follow-up, on the Docker host: restart with the NAS not mounted (jobs must stop with the marker message); one protection copy to the real SMB share; one pull of a repository with Git LFS (token header now limited to github.com)
 - [ ] Review follow-up, not done: one GitHub client in place of two (L-6); a container stop during a pull (L-9); the protection copy does not block a job that starts after it, or "Sync now" of selected repositories
