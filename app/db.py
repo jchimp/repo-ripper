@@ -92,6 +92,20 @@ def set_setting(key: str, value: str) -> None:
         )
 
 
+def set_settings(values: dict[str, str]) -> None:
+    """Store many settings in one transaction: all of them, or none.
+
+    Args:
+        values: Setting key to new value.
+    """
+    with get_conn() as conn:
+        conn.executemany(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [(key, str(value)) for key, value in values.items()],
+        )
+
+
 def get_all_settings() -> dict[str, str]:
     with get_conn() as conn:
         return {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings")}

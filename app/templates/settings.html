@@ -11,6 +11,13 @@
 <h1>Settings</h1>
 
 {% if notice %}<div class="saved" style="margin-top:16px">{{ notice }}</div>{% endif %}
+{% if cron_errors %}
+<div class="notice fail" role="alert" style="margin-top:16px">
+  Settings not saved. One or more schedules are not valid. Correct the fields in the
+  <a href="#schedules">Schedules</a> section, then save again.
+  If you typed a Telegram bot token, type it again.
+</div>
+{% endif %}
 
 <div style="margin-top:20px">{% include "_settings_setup.html" %}</div>
 
@@ -55,7 +62,7 @@
     </div>
   </div>
 
-  <div class="form-section">
+  <div class="form-section" id="schedules">
     <h2>Schedules</h2>
     <div class="hint" style="margin-bottom:14px">
       Standard cron: <span class="mono-cell">minute hour day month weekday</span> ·
@@ -65,7 +72,13 @@
     <div class="field cron">
       <label for="{{ spec.schedule_key }}">{{ spec.label }}</label>
       <input type="text" id="{{ spec.schedule_key }}" name="{{ spec.schedule_key }}"
-             value="{{ s.get(spec.schedule_key, spec.default_cron) }}">
+             value="{{ s.get(spec.schedule_key, spec.default_cron) }}"
+             {%- if cron_errors and cron_errors.get(spec.schedule_key) %} aria-invalid="true"
+             aria-describedby="err-{{ spec.schedule_key }}"{% endif %}>
+      {% if cron_errors and cron_errors.get(spec.schedule_key) %}
+      <div class="notice fail" role="alert" id="err-{{ spec.schedule_key }}">
+        {{ cron_errors[spec.schedule_key] }}</div>
+      {% endif %}
     </div>
     {% endfor %}
     <div class="hint">Leave a schedule empty to run that job by hand only.</div>

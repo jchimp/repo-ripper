@@ -4,11 +4,14 @@ Config is read from the DB settings (editable in the UI), falling back to the
 env seed. Sending is best-effort: a notification failure never fails a job.
 """
 import html
+import logging
 
 import httpx
 
 from . import db
 from .config import get_settings
+
+log = logging.getLogger("repo-ripper")
 
 
 def _config() -> tuple[str, str] | None:
@@ -28,13 +31,18 @@ def send(text: str) -> None:
         return
     token, chat = cfg
     try:
-        httpx.post(
+        r = httpx.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": chat, "text": text, "parse_mode": "HTML"},
             timeout=15,
         )
-    except Exception:
-        pass  # never let notification errors break a job
+    except Exception as exc:
+        # Never let a notification error break a job. Log the type only: the
+        # text of an httpx error can hold the URL, and the URL holds the token.
+        log.warning("Telegram message not sent: %s", type(exc).__name__)
+        return
+    if r.status_code != 200:
+        log.warning("Telegram message not sent: HTTP status %s", r.status_code)
 
 
 def notify_job(job_type: str, ok: bool, summary: str) -> None:
@@ -61,5 +69,7 @@ def test_message() -> bool:
             timeout=15,
         )
         return r.status_code == 200
-    except Exception:
+    except Exception as exc:
+        # The type only, see send().
+        log.warning("Telegram test message not sent: %s", type(exc).__name__)
         return False
