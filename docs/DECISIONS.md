@@ -114,12 +114,20 @@ the same content is on disk a second time, in two formats.
 
 **D-20. Release files are off by default, with a standing reminder.** (2026-11-26)
 One switch per repository. While no repository has it on, the dashboard shows a
-notice that cannot be dismissed. Reason: the files can be very large, but the
+notice that cannot be dismissed. (When the notice goes away: replaced by D-23.) Reason: the files can be very large, but the
 owner wants to be reminded that they are not in the backup.
 
 **D-21. Limits for release files.** (2026-11-26)
 Only the newest N releases get downloads (setting, default 10, 0 = all). A file
 larger than the limit is not stored (setting, default 2048 MB).
+
+**D-23. The release files reminder stays until all active repositories are on.** (2026-11-26)
+Replaces the rule in D-20 that the notice goes away at the first repository.
+Active = backup on and not gone upstream. The notice shows the count ("for 3 of
+40 repositories"). The Repositories table has bulk actions "Release files on"
+and "Release files off" so that many repositories can be changed at one time.
+Cost: a repository with no releases, or with the metadata switch off on
+purpose, keeps the notice on screen until its switch is on.
 
 ## Process
 

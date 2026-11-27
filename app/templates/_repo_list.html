@@ -12,7 +12,9 @@
     <form id="bulk-form" class="bulk" method="post" action="/repos/bulk">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <span class="bulk-label">Checked rows<span data-selected-count></span>:</span>
-      {% for action, label in (('enable', 'Backup on'), ('disable', 'Backup off'), ('sync', 'Sync now')) %}
+      {% for action, label in (('enable', 'Backup on'), ('disable', 'Backup off'),
+                               ('assets_on', 'Release files on'), ('assets_off', 'Release files off'),
+                               ('sync', 'Sync now')) %}
       <button type="submit" name="action" value="{{ action }}" class="ghost small"
               hx-post="/repos/bulk" hx-vals='{"action": "{{ action }}"}'
               hx-include="[name='ids']:checked, #repo-filters"

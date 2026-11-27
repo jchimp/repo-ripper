@@ -68,6 +68,9 @@ the change.
 - **A failed Git LFS fetch is status `warn`** with the error text (PR #5). It
   was hidden as "lfs skipped".
 - **A clone runs in a `.partial` folder** and is renamed when complete (PR #5).
+- **The release files reminder stays until all active repositories are on**,
+  and shows the count. New bulk actions "Release files on" and "Release files
+  off" in the Repositories table (PR #13).
 - **Form controls have one style** (PR #9): same height, border and focus ring
   for text boxes, drop-downs and buttons, in both themes. The Repositories
   filter bar is a grid.
