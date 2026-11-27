@@ -159,6 +159,18 @@ reflog of a deleted branch and a clone writes none, so the log file is the full
 record. Reason: D-07 was true for a repository, not inside one. Cost: a mirror
 never gets smaller. `refs/pull/<n>/merge` changes are kept but not logged.
 
+## Look
+
+**D-27. The pages look like GitHub.** (2026-11-27)
+The colours are GitHub's Primer palette ("dark default" and "light default"),
+and buttons, tabs, counters and state labels have GitHub's shapes. The user
+reads the backup of a GitHub repository, so the same look makes the pages
+familiar. About 15 Octicons (GitHub's MIT-licensed icon set) are copied into
+`app/icons.py` as inline SVG; the licence is `app/static/octicons-LICENSE.txt`.
+No GitHub logo or Octocat: those are trademarks. No web fonts: GitHub uses the
+system font stack too. Cost: the app looks like GitHub, so the page header
+says "repo-ripper" to make clear that this is the local copy.
+
 ## Process
 
 **D-22. One PR per feature, based on `main`. No stacked PRs.** (2026-11-26)

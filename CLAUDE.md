@@ -77,6 +77,7 @@ app/
   metadata/          client.py, capture.py, store.py, job.py  (PRs, issues, ...)
                      assets.py, assets_job.py                 (release files)
   gitread.py         read a bare mirror through the git program
+  icons.py           a few Octicons as inline SVG: {{ icon('name') }} in templates
   mdrender.py, highlight.py   safe Markdown, syntax colours
   fsbrowse.py, secrets_store.py, setup_state.py   setup wizard support
   viewhelpers.py     template helpers of the sync pages

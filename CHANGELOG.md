@@ -8,6 +8,19 @@ the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
 
+### Changed
+
+- **The pages look like GitHub**, in a dark and a light version: GitHub's
+  colours, buttons, tabs, counters, state labels and code colours. Links are
+  blue, the main button is green, the selected tab has an orange line. See
+  `docs/DECISIONS.md`, D-27. (PR: theme-github)
+- Repository tabs, pull request and issue states, and the file list show
+  GitHub's icons (Octicons, MIT licence). The icons are inline SVG, so the
+  pages still work with no internet connection.
+- Text boxes and buttons are 32px high (were 36px). Labels of form fields are
+  bold and use the text colour.
+- The page is wider: 1280px at most (was 1080px).
+
 ## 0.2.0 (2026-11-27)
 
 The fixes from the code review of 2026-11-26 (PR #15).

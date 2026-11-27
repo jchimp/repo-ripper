@@ -1,7 +1,13 @@
 {# Small shared pieces of the pull request, issue and release pages. #}
 
-{% macro badge(pair) -%}
-<span class="state-badge st-{{ pair[1] }}">{{ pair[0] }}</span>
+{# `pull` picks the icon set: pull request or issue. A closed issue is "done"
+   (purple), as on GitHub; a closed pull request that is not merged is red. #}
+{% set _pull_icons = {'open': 'git-pull-request', 'merged': 'git-merge',
+                      'closed': 'git-pull-request-closed', 'draft': 'git-pull-request-draft'} %}
+{% set _issue_icons = {'open': 'issue-opened', 'closed': 'issue-closed'} %}
+{% macro badge(pair, pull) -%}
+{% set ico = (_pull_icons if pull else _issue_icons).get(pair[1]) -%}
+<span class="state-badge st-{{ pair[1] }}{{ ' st-issue' if not pull }}">{% if ico %}{{ icon(ico) }}{% endif %}{{ pair[0] }}</span>
 {%- endmacro %}
 
 {# `label_color` returns "#rrggbb" only for six hex digits, so the style value is safe. #}

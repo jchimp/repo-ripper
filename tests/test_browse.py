@@ -46,9 +46,15 @@ def page(client: TestClient, url: str, status: int = 200) -> str:
 
 
 def tab_names(html: str) -> list[str]:
+    """Return the label of each repository tab, without its icon and count."""
     nav = re.search(r'<nav class="repo-tabs".*?</nav>', html, re.S).group(0)
-    return [re.sub(r"\s*<span.*", "", m, flags=re.S).strip()
+    return [re.search(r"<span>(.*?)</span>", m).group(1)
             for m in re.findall(r"<a [^>]*>(.*?)</a>", nav, re.S)]
+
+
+def foreign_svg(html: str) -> list[str]:
+    """Return the <svg> tags that are not the app's own icons (app/icons.py)."""
+    return re.findall(r'<svg(?! class="octicon )', html)
 
 
 # --- access -----------------------------------------------------------------
@@ -87,8 +93,8 @@ def test_code_page(web, site: Site) -> None:
     html = page(client, f"{base}/code")
     assert tab_names(html) == ["Overview", "Code", "Commits", "Pull requests", "Issues",
                                "Releases", "Wiki"]
-    assert re.search(r'Pull requests <span class="count">2</span>', html)
-    assert re.search(r'Issues <span class="count">6</span>', html)
+    assert re.search(r'Pull requests</span> <span class="count">2</span>', html)
+    assert re.search(r'Issues</span> <span class="count">6</span>', html)
     # Tree: folders and files, with links that keep special names intact.
     assert f'href="{base}/tree/src"' in html and f'href="{base}/blob/a%20b.txt"' in html
     assert f'href="{base}/blob/-dash.txt"' in html
@@ -191,7 +197,7 @@ def test_blob_binary_image_and_active_content(web, monkeypatch: pytest.MonkeyPat
 
     # SVG and HTML are shown as source text.
     html = page(client, f"{base}/blob/evil.svg")
-    assert "<svg" not in html and "<img" not in html and "onload" in html
+    assert not foreign_svg(html) and "<img" not in html and "onload" in html
     html = page(client, f"{base}/blob/page.html")
     assert "<script>alert('page')" not in html and '<span class="nt">script</span>' in html
 
@@ -555,7 +561,8 @@ def test_wiki_uses_the_same_pages(web) -> None:
     html = page(client, base)
     assert f'href="{base}/blob/Home.md"' in html and f'href="{base}/blob/Setup.md"' in html
     assert "<h1>Wiki home</h1>" in html
-    assert 'class="active" aria-current="page">Wiki</a>' in html
+    assert re.search(r'class="active" aria-current="page"><svg[^>]*>.*?</svg><span>Wiki</span>',
+                     html)
     assert "Search in the code" not in html
 
     assert "<h1>Setup</h1>" in page(client, f"{base}/blob/Setup.md")

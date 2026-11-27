@@ -1,17 +1,20 @@
 {# Sub-navigation of one repository. Needs `tabs` from `browse.repo_tabs(row, active)`.
    An entry with no data behind it is not shown. #}
+{% macro tab(key, href, ico, text, count=None) -%}
+<a href="{{ href }}" {% if tabs.active == key %}class="active" aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ text }}</span>{% if count is not none %} <span class="count">{{ count }}</span>{% endif %}</a>
+{%- endmacro %}
 <nav class="repo-tabs" aria-label="Repository sections">
-  <a href="/repos/{{ tabs.repo_id }}" {% if tabs.active == 'overview' %}class="active" aria-current="page"{% endif %}>Overview</a>
+  {{ tab('overview', '/repos/' ~ tabs.repo_id, 'info', 'Overview') }}
   {% if tabs.has_mirror %}
-  <a href="/repos/{{ tabs.repo_id }}/code" {% if tabs.active == 'code' %}class="active" aria-current="page"{% endif %}>Code</a>
-  <a href="/repos/{{ tabs.repo_id }}/commits" {% if tabs.active == 'commits' %}class="active" aria-current="page"{% endif %}>Commits</a>
+  {{ tab('code', '/repos/' ~ tabs.repo_id ~ '/code', 'code', 'Code') }}
+  {{ tab('commits', '/repos/' ~ tabs.repo_id ~ '/commits', 'git-commit', 'Commits') }}
   {% endif %}
   {% if tabs.has_meta %}
-  <a href="/repos/{{ tabs.repo_id }}/pulls" {% if tabs.active == 'pulls' %}class="active" aria-current="page"{% endif %}>Pull requests <span class="count">{{ tabs.pulls }}</span></a>
-  <a href="/repos/{{ tabs.repo_id }}/issues" {% if tabs.active == 'issues' %}class="active" aria-current="page"{% endif %}>Issues <span class="count">{{ tabs.issues }}</span></a>
-  <a href="/repos/{{ tabs.repo_id }}/releases" {% if tabs.active == 'releases' %}class="active" aria-current="page"{% endif %}>Releases <span class="count">{{ tabs.releases }}</span></a>
+  {{ tab('pulls', '/repos/' ~ tabs.repo_id ~ '/pulls', 'git-pull-request', 'Pull requests', tabs.pulls) }}
+  {{ tab('issues', '/repos/' ~ tabs.repo_id ~ '/issues', 'issue-opened', 'Issues', tabs.issues) }}
+  {{ tab('releases', '/repos/' ~ tabs.repo_id ~ '/releases', 'tag', 'Releases', tabs.releases) }}
   {% endif %}
   {% if tabs.has_wiki %}
-  <a href="/repos/{{ tabs.repo_id }}/wiki" {% if tabs.active == 'wiki' %}class="active" aria-current="page"{% endif %}>Wiki</a>
+  {{ tab('wiki', '/repos/' ~ tabs.repo_id ~ '/wiki', 'book', 'Wiki') }}
   {% endif %}
 </nav>

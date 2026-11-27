@@ -4,7 +4,7 @@
 <div class="item-header">
   <h2 class="item-h">{{ issue.title or '(no title)' }} <span class="muted">#{{ number }}</span></h2>
   <div class="item-meta">
-    {{ mac.badge(badge) }}
+    {{ mac.badge(badge, false) }}
     <span><strong>{{ author }}</strong> opened this issue</span>
     {{ mac.labels(issue.labels) }}
     <span class="spacer"></span>
