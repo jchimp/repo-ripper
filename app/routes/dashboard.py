@@ -1,4 +1,4 @@
-"""Dashboard, job detail, live progress, and manual job triggers."""
+"""Dashboard, live progress panel, and manual job triggers."""
 import sqlite3
 import time
 
@@ -79,7 +79,6 @@ def dashboard(request: Request):
     total_size = sum((r["size_bytes"] or 0) for r in repos)
     history = db.history_snapshots()
     return render(request, "dashboard.html", {
-        "jobs": db.recent_jobs(15),
         "job_specs": list(jobs.JOBS.values()),
         "next_runs": scheduler.next_runs(),
         "repo_count": len(repos),
@@ -106,38 +105,6 @@ def live_panel(request: Request):
         # The last job is done: load the whole dashboard again, one time, so
         # that the cards, the lists and the chart show the result.
         resp.headers["HX-Refresh"] = "true"
-    return resp
-
-
-def _job_ctx(job: sqlite3.Row) -> dict:
-    live = next((lj for lj in viewhelpers.live_jobs() if lj["job"]["id"] == job["id"]), None)
-    spec = jobs.JOBS.get(job["job_type"])
-    return {
-        "job": job,
-        "lj": live,
-        "job_label": spec.label if spec else job["job_type"],
-        "results": [] if live else db.job_repo_results(job["id"]),
-    }
-
-
-@router.get("/jobs/{job_id}", response_class=HTMLResponse)
-def job_detail(request: Request, job_id: int):
-    job = db.get_job(job_id)
-    if not job:
-        return RedirectResponse("/", status_code=303)
-    return render(request, "job_detail.html", _job_ctx(job))
-
-
-@router.get("/jobs/{job_id}/live", response_class=HTMLResponse)
-def job_live(request: Request, job_id: int):
-    """The polled part of the job page while the job runs."""
-    job = db.get_job(job_id)
-    if not job:
-        return Response(status_code=204, headers={"HX-Redirect": "/"})
-    ctx = _job_ctx(job)
-    resp = render(request, "_job_live.html", ctx)
-    if not ctx["lj"]:
-        resp.headers["HX-Refresh"] = "true"   # done: show the result page
     return resp
 
 

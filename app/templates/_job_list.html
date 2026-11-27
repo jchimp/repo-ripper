@@ -1,0 +1,38 @@
+{# All job runs, newest first, one page. The filter form replaces this element. #}
+<div id="job-list">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Job runs</h2>
+      <span class="count">{{ total }}</span>
+    </div>
+    <div class="panel-body table-scroll">
+      {% if runs %}
+      <table>
+        <thead>
+          <tr><th>Job</th><th>Status</th><th>Started</th><th>Duration</th><th>Result</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for j in runs %}
+          <tr>
+            <td>{{ labels.get(j.job_type, j.job_type) }}</td>
+            <td><span class="pill {{ j.status }}">{{ j.status }}</span></td>
+            <td class="mono-cell"><span title="{{ j.started_at | fmt_time }}">{{ j.started_at | ago }}</span></td>
+            <td class="mono-cell">
+              {%- if j.finished_at -%}{{ (j.finished_at - j.started_at) | fmt_duration }}{%- else -%}—{%- endif -%}
+            </td>
+            <td>{{ j.summary or '—' }}</td>
+            <td><a href="/jobs/{{ j.id }}">details</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif f.type or f.status %}
+      <div class="empty">No job run matches the filters. <a href="/jobs">Show all runs</a>.</div>
+      {% else %}
+      <div class="empty">No jobs yet. Run "Scan GitHub" on the Dashboard to find your repositories.</div>
+      {% endif %}
+    </div>
+  </div>
+  {% include "_browse_pager.html" %}
+  <p class="hint">The app keeps the newest {{ keep }} job runs.</p>
+</div>

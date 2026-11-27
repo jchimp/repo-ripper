@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% set active = "dashboard" %}
+{% set active = "jobs" %}
 {% block content %}
-<div class="eyebrow"><a href="/">Dashboard</a> / Job {{ job.id }}</div>
+<div class="eyebrow"><a href="/jobs">Jobs</a> / Run {{ job.id }}</div>
 <h1>{{ job_label }} <span class="h-sub">run {{ job.id }}</span></h1>
 
 {% if lj %}

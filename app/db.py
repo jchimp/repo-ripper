@@ -424,6 +424,39 @@ def recent_jobs(limit: int = 25) -> list[sqlite3.Row]:
         ).fetchall()
 
 
+# Statuses a job run can have. The Jobs page filter accepts only these.
+JOB_STATUSES = ("running", "ok", "partial", "error", "skipped", "interrupted")
+
+
+def query_jobs(*, job_type: str = "", status: str = "", limit: int = 50,
+               offset: int = 0) -> tuple[list[sqlite3.Row], int]:
+    """Return one page of job runs, newest first, and the number of matching runs.
+
+    Args:
+        job_type: Only runs of this job key. Empty means all jobs.
+        status: Only runs with this status. Empty means all statuses.
+        limit: Rows on one page.
+        offset: Rows to skip.
+    """
+    where: list[str] = []
+    args: list[object] = []
+    if job_type:
+        where.append("job_type = ?")
+        args.append(job_type)
+    if status:
+        where.append("status = ?")
+        args.append(status)
+    sql_where = f" WHERE {' AND '.join(where)}" if where else ""
+    with get_conn() as conn:
+        total = conn.execute(f"SELECT COUNT(*) FROM job_runs{sql_where}", args).fetchone()[0]
+        rows = conn.execute(
+            f"SELECT * FROM job_runs{sql_where} ORDER BY started_at DESC, id DESC "
+            "LIMIT ? OFFSET ?",
+            [*args, limit, offset],
+        ).fetchall()
+    return rows, total
+
+
 def get_job(job_id: int) -> sqlite3.Row | None:
     with get_conn() as conn:
         return conn.execute("SELECT * FROM job_runs WHERE id = ?", (job_id,)).fetchone()

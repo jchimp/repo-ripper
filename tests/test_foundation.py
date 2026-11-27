@@ -17,7 +17,7 @@ def test_health_is_public(client: TestClient) -> None:
     assert resp.json() == {"status": "ok"}
 
 
-@pytest.mark.parametrize("path", ["/", "/repos", "/settings", "/jobs/1"])
+@pytest.mark.parametrize("path", ["/", "/repos", "/settings", "/jobs", "/jobs/1"])
 def test_pages_need_a_session(client: TestClient, path: str) -> None:
     resp = client.get(path)
     assert resp.status_code == 303

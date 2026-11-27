@@ -2,7 +2,11 @@
 {% set active = "dashboard" %}
 {% block content %}
 <div class="eyebrow">Overview</div>
-<h1>Dashboard</h1>
+<div class="page-head">
+  <h1>Dashboard</h1>
+  <span class="spacer"></span>
+  <a class="btn" href="/jobs">All job runs</a>
+</div>
 {% include "_token_health.html" %}
 {% include "_assets_reminder.html" %}
 
@@ -102,32 +106,4 @@
   </div>
 </div>
 
-<div class="panel">
-  <div class="panel-head"><h2>Recent jobs</h2></div>
-  <div class="panel-body table-scroll">
-    {% if jobs %}
-    <table>
-      <thead>
-        <tr><th>Job</th><th>Status</th><th>Started</th><th>Duration</th><th>Result</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for j in jobs %}
-        <tr>
-          <td class="mono-cell">{{ j.job_type }}</td>
-          <td><span class="pill {{ j.status }}">{{ j.status }}</span></td>
-          <td class="mono-cell">{{ j.started_at | ago }}</td>
-          <td class="mono-cell">
-            {%- if j.finished_at -%}{{ (j.finished_at - j.started_at) | fmt_duration }}{%- else -%}—{%- endif -%}
-          </td>
-          <td>{{ j.summary or '—' }}</td>
-          <td><a href="/jobs/{{ j.id }}">details</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">No jobs yet. Run "Scan GitHub" to find your repositories.</div>
-    {% endif %}
-  </div>
-</div>
 {% endblock %}
