@@ -587,3 +587,13 @@ def test_repo_metadata_toggle_needs_a_session(client: TestClient) -> None:
     resp = client.post("/repos/1/metadata-toggle",
                        headers={"X-CSRF-Token": csrf_from(token_page)})
     assert (resp.status_code, resp.headers["location"]) == (303, "/login")
+
+
+def test_forbidden_answer_names_the_permission_to_change(fake: FakeGitHub) -> None:
+    """A fine-grained token with no Issues permission gets HTTP 403 on the issue list."""
+    fake.always[f"/repos/{DEMO}/issues"] = 403
+    res = sync()
+    assert res.status == "error"
+    assert "HTTP 403" in res.message
+    assert 'permission "Issues" to Read-only' in res.message
+    assert "repository access" in res.message

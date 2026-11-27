@@ -41,6 +41,21 @@ class NotFound(GitHubError):
     """HTTP 404 or 410: the resource does not exist, is off, or is not visible."""
 
 
+class PermissionDenied(GitHubError):
+    """HTTP 403 that is not a rate limit: the token may not read this resource."""
+
+
+def _needed_permission(path: str) -> str:
+    """Name the fine-grained token permission that an API path needs."""
+    if "/pulls" in path:
+        return '"Pull requests"'
+    if "/issues" in path or path.endswith(("/labels", "/milestones")):
+        return '"Issues"'
+    if "/releases" in path:
+        return '"Contents"'
+    return '"Metadata"'
+
+
 class RateLimited(Exception):
     """GitHub refused the request because of a primary or secondary rate limit.
 
@@ -192,6 +207,15 @@ class GitHubClient:
         if status == 401:
             raise GitHubError("GitHub refused the token (HTTP 401). Check that it is valid "
                               "and not expired.", status)
+        if status == 403:
+            # The usual cause is a fine-grained token that lacks one permission,
+            # or that does not include this repository. Say what to change.
+            raise PermissionDenied(
+                f"The token has no permission to read {path} (HTTP 403: {message[:120]}). "
+                f"On GitHub, open the token and set the repository permission "
+                f"{_needed_permission(path)} to Read-only. Make sure that this repository is "
+                "in the token's repository access. A classic token needs the scope \"repo\".",
+                status)
         raise GitHubError(f"HTTP {status} for {path}: {message[:200]}", status)
 
     @staticmethod
