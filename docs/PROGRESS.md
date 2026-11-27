@@ -21,7 +21,7 @@ Version 0.1.0: all planned features are in `main` and Jeremy's browser checks pa
 - [x] CI: move `actions/checkout` and `actions/setup-python` off Node.js 20 (deprecation warning)
 - [x] Decide on a first version number and tag; then start a dated section in `CHANGELOG.md`
 - [ ] Workstation cleanup by hand: the session scratchpad folder (the folder `repo-ripper-wt` is gone)
-- [ ] Tag `v0.1.0` on `main` after the release PR is merged
+- [x] Tag `v0.1.0` on `main` after the release PR is merged
 
 ## Progress Log
 
@@ -32,4 +32,5 @@ Version 0.1.0: all planned features are in `main` and Jeremy's browser checks pa
 - Decided: GitHub and Docker only, JSON metadata next to mirrors, built-in read-only browser, nothing deleted without confirmation, release files off by default with a reminder. See `docs/DECISIONS.md`.
 - Added `CLAUDE.md`, `CHANGELOG.md`, `docs/DECISIONS.md` and this file.
 - Version is 0.1.0 (in `app/__init__.py`, shown in the page footer). Reminder rule decided: stays until all active repositories are on (D-23). CI actions updated.
-- Next: tag `v0.1.0`, daily use, run the unverified parts of `docs/HOSTING.md`.
+- Tagged `v0.1.0` on `main` (the merge of PR #14).
+- Next: daily use, run the unverified parts of `docs/HOSTING.md`.
