@@ -1,15 +1,16 @@
 # Project Progress
 
 ## Current Focus
-UI work for 0.3.0, five PRs in this order: GitHub-style theme, Jobs page, repository tabs, settings tabs, Storage page. Then one release PR. The review follow-up checks below are still open.
+UI work for 0.3.0: 3 of 5 PRs merged (#17 theme, #18 Jobs, #19 repository tabs). Next: settings tabs (UI 4/5), then the Storage page (UI 5/5), then the release PR. See `docs/HANDOFF.md`.
 
 ## Open Todos
 - [x] UI 1/5: GitHub-style theme, light and dark, with Octicons (PR #17)
 - [x] UI 2/5: Jobs page: live panel plus all job runs, with pages and filters; "Recent jobs" leaves the Dashboard (PR #18)
-- [x] UI 3/5: Repository tabs: Active (mine, backup on), Other (mine, backup off), Watched (with the watch panel), All (branch `repo-tabs`)
+- [x] UI 3/5: Repository tabs: Active (mine, backup on), Other (mine, backup off), Watched (with the watch panel), All (PR #19)
 - [ ] UI 4/5: Settings tabs: vertical, one URL and one Save button for each section
 - [ ] UI 5/5: Storage page: folders, marker, disk space, protection copy, sizes of code / metadata / release files, charts (migration 0032)
 - [ ] Release 0.3.0 after the five UI PRs
+- [ ] Manual checks of PRs #17, #18 and #19 (numbered lists in each PR): phone width, Firefox, the HTMX filters and bulk actions in a real browser
 - [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (PR #15)
 - [x] Tag `v0.2.0` on `main` after the release PR is merged
 - [ ] Review follow-up, by hand in a browser: Settings with a bad schedule, in both themes (the message box can be too wide)
@@ -31,20 +32,18 @@ UI work for 0.3.0, five PRs in this order: GitHub-style theme, Jobs page, reposi
 - [ ] Run the cgit service and the `jq` commands from `docs/HOSTING.md`; remove or confirm the [Likely] / [Uncertain] tags
 - [x] CI: move `actions/checkout` and `actions/setup-python` off Node.js 20 (deprecation warning)
 - [x] Decide on a first version number and tag; then start a dated section in `CHANGELOG.md`
-- [ ] Workstation cleanup by hand: the session scratchpad folder (the folder `repo-ripper-wt` is gone)
+- [ ] Workstation cleanup by hand: the session scratchpad folder (the folder `repo-ripper-wt` is gone), and the screenshot folders `%TEMP%r-shots-*`
 - [x] Tag `v0.1.0` on `main` after the release PR is merged
 
 ## Progress Log
 
 ### 2026-11-27
-- Planned five UI PRs (theme, Jobs, repository tabs, settings tabs, Storage). Jeremy accepted all recommendations: theme first; Dashboard keeps the live panel and "Run now"; third tab is "Watched"; protection settings stay on Settings; one Save button for each settings tab; Octicons but no GitHub logo; release as 0.3.0.
-- UI 1/5 built on `theme-github`: Primer colours, GitHub-style components, Octicons in `app/icons.py` (D-27). Merged as PR #17.
-- UI 2/5 built on `jobs-page`: `/jobs` with the live panel, filters and pages; job run routes moved from `routes/dashboard.py` to `routes/job_runs.py`. Merged as PR #18.
-- UI 3/5 built on `repo-tabs`. Added a fourth tab, All, not in the plan: the Dashboard links (failing, never synced, verify failed, gone upstream, release files) count own and watched repositories together, so they need a tab that shows both.
+- Planned five UI PRs (theme, Jobs, repository tabs, settings tabs, Storage). Jeremy accepted all recommendations: theme first, third tab "Watched", one Save button for each settings tab, Octicons but no GitHub logo, release as 0.3.0.
+- Merged PR #17 (GitHub-style theme, Octicons, D-27), PR #18 (Jobs page) and PR #19 (repository tabs). PR #19 added a fourth tab, "All", not in the plan: the Dashboard links count own and watched repositories together.
 - Senior code review of `v0.1.0` (report in `.review/`, not in git): 1 critical, 4 high, 7 medium, 9 low findings. Main theme: the jobs did not check that the mirror folder is the NAS.
-- Fixed on the branch `review-fixes`: marker file and storage check, protection copy guards and "delete" off by default, kept commits and `repo-ripper-lost-refs.log`, token header for the GitHub host only, cron check, crash guard for scan and protection, process log, dependency update with a lock and a CI audit. See `CHANGELOG.md`, section 0.2.0, and D-24 to D-26.
-- Merged as PR #15. Version set to 0.2.0: the `v0.1.0` tag was made before PR #15, so the fixes go in a new version, not in 0.1.0.
-- Next: the three follow-up todos above, then two weeks of daily use before the project is announced.
+- Fixed in PR #15 (branch `review-fixes`): marker file and storage check, protection copy guards and "delete" off by default, kept commits, token header for the GitHub host only, cron check, crash guards, process log, dependency lock. See `CHANGELOG.md` 0.2.0 and D-24 to D-26.
+- Version set to 0.2.0: the `v0.1.0` tag was made before PR #15, so the fixes go in a new version.
+- Next: UI 4/5 and 5/5, release 0.3.0, the manual checks of #17 to #19, then the review follow-ups and two weeks of daily use.
 
 ### 2026-11-26
 - Built and merged PRs #1 to #10: wizard, watched repositories, metadata, sync engine, browser, release files, UI fixes. PR #7 repaired three stacked PRs that had merged into the wrong branches.
