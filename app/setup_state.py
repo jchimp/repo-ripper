@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import asdict
 
-from . import db, fsbrowse, github, runtime
+from . import db, fsbrowse, github, runtime, storage_guard
 
 log = logging.getLogger("repo-ripper")
 
@@ -191,6 +191,7 @@ def save_storage(mirror_raw: str, protection_raw: str,
     """Validate and store the two storage folders.
 
     Data is never moved: a new mirror folder gets new clones at the next sync.
+    Each stored folder gets the marker file of `storage_guard`.
     The caller must call `scheduler.configure_jobs()` after a save, because
     the protection schedule can change.
 
@@ -215,6 +216,19 @@ def save_storage(mirror_raw: str, protection_raw: str,
             protection, _ = fsbrowse.prepare_folder(protection_raw)
         except fsbrowse.BrowseError as exc:
             errors[runtime.PROTECTION_KEY] = str(exc)
+    if errors:
+        return errors
+
+    # The marker says "the user selected this folder". The jobs refuse a
+    # folder without it (a share that is not mounted has no marker).
+    for key, folder in ((runtime.MIRROR_KEY, mirror), (runtime.PROTECTION_KEY, protection)):
+        if folder is None:
+            continue
+        try:
+            storage_guard.write_marker(folder)
+        except OSError as exc:
+            errors[key] = (f"The app cannot write the file {storage_guard.MARKER_NAME} "
+                           f"into {folder}: {exc.strerror or exc}.")
     if errors:
         return errors
 

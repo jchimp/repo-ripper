@@ -344,13 +344,41 @@ If you change the mirror folder later (Settings, Storage), the app does not
 move data: the mirrors that exist stay in the old folder, and the next sync
 makes new clones in the new folder.
 
+When you select a storage folder, the app writes the file `.repo-ripper-root`
+into it. A job that writes stops with an error when this file is not there,
+because the NAS share is then probably not mounted. Do not delete the file; if
+you move a folder, select it again in Settings, Storage.
+
 ## Protection `--delete`
 
-On makes the copy an exact replica and drops repos deleted upstream; it also
-propagates a corrupted primary on the next run. Off makes the copy append-only
-(deleted repos linger) but shields it from primary corruption. Pick per your
-threat model — filesystem snapshots (ZFS/btrfs) on the protection pool give you
-both.
+The setting "Delete extras on the copy" (Settings) adds `--delete` to the rsync
+command. **The default is off** for a new install. An install that already has
+the setting keeps its value.
+
+- **Off:** the protection copy never removes a file. A file that is deleted
+  from the mirror folder stays in the protection folder. The copy uses more
+  disk space with time. If the mirror folder is lost, damaged or replaced by an
+  empty disk, the protection copy keeps all that it has. This is the reason for
+  the default: the protection copy must not lose data at the moment when the
+  first copy fails.
+- **On:** the protection copy is an exact replica. rsync removes from the
+  protection folder each file that is not in the mirror folder. A damaged or
+  incomplete mirror folder then also damages the copy at the next run.
+
+The protection copy does not run, and the job shows an error, in these cases:
+
+- The file `.repo-ripper-root` is not in the mirror folder or not in the
+  protection folder (see "NAS mounts and permissions").
+- "Delete" is on, and fewer than half of the repositories that had a good sync
+  are in the mirror folder. Example: the database knows 40 repositories with a
+  good sync and the mirror folder has 3. Examine the mirror folder before you
+  run the copy again.
+
+The job is skipped while the pull, metadata or release files job runs, because
+rsync must not copy a repository while a job changes it.
+
+Filesystem snapshots (ZFS, btrfs) on the protection share give you an exact
+replica and protection against a damaged mirror folder at the same time.
 
 ## Restore
 
