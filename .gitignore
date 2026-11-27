@@ -1,5 +1,14 @@
+# Docs
+docs/private/
+*.local.md
+
+# Secrets
 .env
+
+# Data and repos
 data/
+
+# Build, cache, ouput
 __pycache__/
 *.pyc
 .venv/

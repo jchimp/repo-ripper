@@ -2,6 +2,7 @@
 
 Route modules import from here, so that they do not import each other.
 """
+import hashlib
 import secrets
 import time
 from pathlib import Path
@@ -14,6 +15,29 @@ BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+# name -> (modification time, url). A file is hashed again only when it changes.
+_static_cache: dict[str, tuple[float, str]] = {}
+
+
+def static_url(name: str) -> str:
+    """Return the URL of a static file with a version taken from its content.
+
+    A browser keeps `style.css` in its cache. Without a version in the URL, a
+    browser shows the pages of a new release with the stylesheet of the old
+    one, and new controls look unstyled until a hard reload.
+    """
+    path = BASE_DIR / "static" / name
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return f"/static/{name}"
+    cached = _static_cache.get(name)
+    if cached is None or cached[0] != mtime:
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()[:10]
+        cached = (mtime, f"/static/{name}?v={digest}")
+        _static_cache[name] = cached
+    return cached[1]
 
 
 def _fmt_time(ts: float | None) -> str:
@@ -35,6 +59,7 @@ def _fmt_size(n: int | None) -> str:
 
 templates.env.filters["fmt_time"] = _fmt_time
 templates.env.filters["fmt_size"] = _fmt_size
+templates.env.globals["static_url"] = static_url
 
 
 def csrf_token(request: Request) -> str:

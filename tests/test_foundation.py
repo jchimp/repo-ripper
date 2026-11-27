@@ -149,3 +149,15 @@ def test_job_registry_drives_dashboard_and_settings(authed: tuple[TestClient, st
     assert scheduler.next_runs()["scan"] is None
     client.post("/settings", data={"csrf_token": token, "schedule_scan": "0 4 * * *"})
     assert scheduler.next_runs()["scan"] is not None
+
+
+def test_static_urls_carry_a_content_version(client: TestClient) -> None:
+    """A changed stylesheet gets a new URL, so no browser shows an old copy."""
+    import re
+
+    from app import web
+    html = client.get("/login").text
+    match = re.search(r'href="(/static/style\.css\?v=[0-9a-f]{10})"', html)
+    assert match, html
+    assert client.get(match.group(1)).status_code == 200
+    assert web.static_url("no-such-file.css") == "/static/no-such-file.css"
