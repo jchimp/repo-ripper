@@ -31,5 +31,6 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  {% if user %}<footer class="app-footer">repo-ripper {{ app_version }}</footer>{% endif %}
 </body>
 </html>

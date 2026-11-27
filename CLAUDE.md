@@ -174,6 +174,8 @@ MIRROR_ROOT=./data/mirrors BROWSE_ROOTS=./data \
 - Never commit to `main`. One branch and one PR per feature or fix, based on
   `main`. Do not stack PRs: a stacked PR that is merged before its base
   retargets lands in the wrong branch.
+- The version is `__version__` in `app/__init__.py`. A release PR changes it and moves
+  "Unreleased" in `CHANGELOG.md` to a dated section; the tag is `v<version>`.
 - Update `CHANGELOG.md` and `docs/PROGRESS.md` in the same PR. A decision that
   changes a rule above goes in `docs/DECISIONS.md` in that PR too.
 - No force-push. To repair a pushed branch, add a commit or a merge.

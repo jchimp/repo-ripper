@@ -1018,3 +1018,10 @@ table.hunk-quote { width: 100%; border-bottom: 1px solid var(--line); }
   color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent);
 }
 .notice form.inline { margin-left: 8px; }
+
+/* --- page footer: the version, signed-in pages only ------------------------ */
+
+.app-footer {
+  max-width: 1080px; margin: 0 auto; padding: 0 24px 32px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
