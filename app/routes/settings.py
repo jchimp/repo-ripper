@@ -1,5 +1,8 @@
 """Settings page."""
+from collections.abc import Mapping
+
 from fastapi import APIRouter, Form, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .. import db, fsbrowse, jobs, notify, runtime, scheduler, setup_state
@@ -31,11 +34,18 @@ _NOTICES = {
 }
 
 
-def _page(request: Request, extra: dict | None = None, status_code: int = 200) -> HTMLResponse:
+def _page(request: Request, extra: dict | None = None, status_code: int = 200,
+          typed: dict[str, str] | None = None) -> HTMLResponse:
+    """Render the Settings page.
+
+    `typed` holds values of a form that was not saved. They replace the stored
+    values in the fields, so the user does not type them again.
+    """
     s = db.get_all_settings()
     secrets_set = {k: bool(s.pop(k, "")) for k in _SECRET_KEYS}
     for key in _HIDDEN_KEYS:
         s.pop(key, None)
+    s.update(typed or {})
     mirror, protection = runtime.mirror_root(), runtime.protection_root()
     skipped = setup_state.protection_skipped()
     ctx = {
@@ -68,36 +78,60 @@ def settings_page(request: Request):
     return _page(request)
 
 
-@router.post("/settings")
-async def settings_save(request: Request):
-    form = await request.form()
-    for key in _BOOL_KEYS:
-        db.set_setting(key, "1" if form.get(key) else "0")
+_NUMBER_KEYS = ("pull_workers", "assets_keep_releases", "assets_max_mb")
+
+
+def _save(request: Request, form: Mapping[str, object]) -> HTMLResponse | RedirectResponse:
+    """Check the main form, then store it. Blocking: runs in the thread pool."""
+    values: dict[str, str] = {key: "1" if form.get(key) else "0" for key in _BOOL_KEYS}
     schedule_keys = tuple(spec.schedule_key for spec in jobs.JOBS.values())
     for key in _TEXT_KEYS + schedule_keys:
         if key in form:
-            db.set_setting(key, str(form.get(key)).strip())
+            values[key] = str(form.get(key)).strip()
+
+    # Check all schedules before the first write. A bad string in the database
+    # is a job without a schedule after the next start.
+    cron_errors = {}
+    for key in schedule_keys:
+        problem = scheduler.cron_problem(values.get(key, ""))
+        if problem:
+            cron_errors[key] = problem
+    if cron_errors:
+        # Show the form again with what the user typed. Secrets are not sent back.
+        typed = dict(values)
+        numbers = {key: str(form.get(key)).strip() for key in _NUMBER_KEYS if key in form}
+        return _page(request, {"cron_errors": cron_errors, **numbers},
+                     status_code=400, typed=typed)
+
     if "pull_workers" in form:
         try:
             workers = int(str(form.get("pull_workers")).strip())
         except ValueError:
             workers = 0  # not a number: keep the stored value
         if workers:
-            db.set_setting("pull_workers", str(max(1, min(8, workers))))
+            values["pull_workers"] = str(max(1, min(8, workers)))
     # Whole numbers with limits. A value that is not a number keeps the stored one.
     for key, low, high in (("assets_keep_releases", 0, 100000),
                            ("assets_max_mb", 1, assets_job.MAX_MB_LIMIT)):
         raw = str(form.get(key) or "").strip()
         if raw.isdigit():
-            db.set_setting(key, str(max(low, min(high, int(raw)))))
+            values[key] = str(max(low, min(high, int(raw))))
     for key in _SECRET_KEYS:
         value = str(form.get(key) or "").strip()
         if value:
-            db.set_setting(key, value)
+            values[key] = value
         elif form.get(f"{key}_clear"):
-            db.set_setting(key, "")
+            values[key] = ""
+    db.set_settings(values)  # one transaction
     scheduler.configure_jobs()  # re-apply cron changes live
     return RedirectResponse("/settings?saved=1", status_code=303)
+
+
+@router.post("/settings")
+async def settings_save(request: Request):
+    form = await request.form()
+    # SQLite writes and the scheduler block: keep them off the event loop.
+    return await run_in_threadpool(_save, request, form)
 
 
 @router.post("/settings/test-telegram")

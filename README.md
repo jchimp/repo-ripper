@@ -416,7 +416,10 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
 - The app keeps the newest 200 history rows for each repository.
 - The Telegram message of a pull job with failures lists the failed
   repositories (10 names at most).
-- Bad cron strings are ignored on save; the previous schedule stays in effect.
+- Settings does not save a schedule that is not valid cron. The page shows the
+  field with the error, and no value of that form is stored. If a stored
+  schedule is not valid at start, the app uses the default schedule of that
+  job, stores it, and writes a warning to the process log.
 - Ports, image, and mounts are all in `docker-compose.yml`.
 
 ## Project documents

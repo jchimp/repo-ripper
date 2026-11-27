@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import __version__, auth, db, scheduler
+from . import __version__, auth, db, logsetup, scheduler
 from .config import get_settings
 from .metadata import assets_job as _assets_job  # noqa: F401  (registers the job)
 from .metadata import job as _metadata_job  # noqa: F401  (registers the metadata job)
@@ -25,6 +25,7 @@ from .routes import (
 from .routes import metadata as metadata_routes
 from .web import BASE_DIR, csrf_protect
 
+logsetup.configure()  # before the first log line of the app
 log = logging.getLogger("repo-ripper")
 
 
