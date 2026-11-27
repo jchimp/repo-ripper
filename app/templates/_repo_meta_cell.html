@@ -1,20 +1,46 @@
 <td id="repo-meta-{{ r.id }}" class="meta-cell">
-  <button type="button" class="toggle" data-on="{{ r.metadata_enabled }}"
-          aria-pressed="{{ 'true' if r.metadata_enabled else 'false' }}"
-          aria-label="Capture metadata for {{ r.full_name }}"
-          title="{{ 'On. Pull requests, issues and comments are captured.' if r.metadata_enabled else 'Off. Metadata is not captured.' }}"
-          hx-post="/repos/{{ r.id }}/metadata-toggle"
-          hx-target="#repo-meta-{{ r.id }}"
-          hx-swap="outerHTML"></button>
-  {% if r.meta_sync_at %}
-  <span class="meta-counts" title="Last metadata sync: {{ r.meta_sync_at | fmt_time }}">
-    {{- r.meta_issues or 0 }} issues · {{ r.meta_pulls or 0 }} PRs</span>
-  {% if r.meta_status and r.meta_status != 'ok' %}
-  <span class="pill {{ 'error' if r.meta_status == 'error' else 'partial' }}"
-        title="{{ r.meta_message or '' }}">{{ r.meta_status | replace('_', ' ') }}</span>
-  {% endif %}
-  <span class="meta-when">{{ r.meta_sync_at | fmt_time }}</span>
-  {% elif r.metadata_enabled %}
-  <span class="meta-counts">not captured yet</span>
-  {% endif %}
+  <div class="meta-line">
+    <button type="button" class="toggle" data-on="{{ r.metadata_enabled }}"
+            aria-pressed="{{ 'true' if r.metadata_enabled else 'false' }}"
+            aria-label="Capture metadata for {{ r.full_name }}"
+            title="{{ 'On. Pull requests, issues and comments are captured.' if r.metadata_enabled else 'Off. Metadata is not captured.' }}"
+            hx-post="/repos/{{ r.id }}/metadata-toggle"
+            hx-target="#repo-meta-{{ r.id }}"
+            hx-swap="outerHTML"></button>
+    {% if r.meta_sync_at %}
+    <span class="meta-counts" title="Last metadata sync: {{ r.meta_sync_at | fmt_time }}">
+      {{- r.meta_issues or 0 }} issues · {{ r.meta_pulls or 0 }} PRs</span>
+    {% if r.meta_status and r.meta_status != 'ok' %}
+    <span class="pill {{ 'error' if r.meta_status == 'error' else 'partial' }}"
+          title="{{ r.meta_message or '' }}">{{ r.meta_status | replace('_', ' ') }}</span>
+    {% endif %}
+    {% elif r.metadata_enabled %}
+    <span class="meta-counts">not captured yet</span>
+    {% else %}
+    <span class="meta-counts">metadata off</span>
+    {% endif %}
+  </div>
+  {# Release files need releases.json, so this switch works only with metadata on. #}
+  <div class="meta-line">
+    <button type="button" class="toggle" data-on="{{ r.assets_enabled }}"
+            aria-pressed="{{ 'true' if r.assets_enabled else 'false' }}"
+            aria-label="Download release files for {{ r.full_name }}"
+            {{ 'disabled' if not r.metadata_enabled }}
+            title="{% if not r.metadata_enabled %}Turn on the metadata switch first.{% elif r.assets_enabled %}On. Attached files and source archives of the newest releases are downloaded.{% else %}Off. Release files are not downloaded.{% endif %}"
+            hx-post="/repos/{{ r.id }}/assets-toggle"
+            hx-target="#repo-meta-{{ r.id }}"
+            hx-swap="outerHTML"></button>
+    {% if r.assets_enabled and r.assets_sync_at %}
+    <span class="meta-counts" title="Last run: {{ r.assets_sync_at | fmt_time }}. {{ r.assets_message or '' }}">
+      {{- r.assets_files or 0 }} release files · {{ r.assets_bytes | fmt_size }}</span>
+    {% if r.assets_status and r.assets_status != 'ok' %}
+    <span class="pill {{ 'error' if r.assets_status == 'error' else 'partial' }}"
+          title="{{ r.assets_message or '' }}">{{ r.assets_status | replace('_', ' ') }}</span>
+    {% endif %}
+    {% elif r.assets_enabled %}
+    <span class="meta-counts">release files: not downloaded yet</span>
+    {% else %}
+    <span class="meta-counts">release files off</span>
+    {% endif %}
+  </div>
 </td>

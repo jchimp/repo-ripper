@@ -23,6 +23,8 @@ SEED_KEYS = (
 # Settings that have no env variable in config.py: key -> default value.
 SEED_DEFAULTS = {
     "metadata_enabled": "1",
+    "assets_keep_releases": "10",   # newest releases that get file downloads; 0 = all
+    "assets_max_mb": "2048",        # size limit for one release file
 }
 
 
@@ -289,6 +291,45 @@ def record_metadata_result(full_name: str, status: str, message: str,
             "meta_issues = COALESCE(?, meta_issues), meta_pulls = COALESCE(?, meta_pulls) "
             "WHERE full_name = ?",
             (time.time(), status, message, issues, pulls, full_name),
+        )
+
+
+def toggle_repo_assets(repo_id: int) -> None:
+    """Switch the download of release files of one repository on or off."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE repos SET assets_enabled = 1 - assets_enabled WHERE id = ?", (repo_id,)
+        )
+
+
+def list_repos_for_assets() -> list[sqlite3.Row]:
+    """Repositories that get release file downloads, the oldest run first.
+
+    Release files need `releases.json`, so the metadata switch must be on too.
+    """
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM repos WHERE enabled = 1 AND metadata_enabled = 1 "
+            "AND assets_enabled = 1 "
+            "ORDER BY assets_sync_at IS NOT NULL, assets_sync_at, full_name"
+        ).fetchall()
+
+
+def count_repos_with_assets() -> int:
+    """Number of repositories with the release files switch on."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM repos WHERE assets_enabled = 1").fetchone()[0]
+
+
+def record_assets_result(full_name: str, status: str, message: str,
+                         files: int, total_bytes: int) -> None:
+    """Store the result of a release files run for one repository."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE repos SET assets_sync_at = ?, assets_status = ?, assets_message = ?, "
+            "assets_files = ?, assets_bytes = ? WHERE full_name = ?",
+            (time.time(), status, message, files, total_bytes, full_name),
         )
 
 

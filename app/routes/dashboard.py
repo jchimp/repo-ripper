@@ -80,6 +80,8 @@ def dashboard(request: Request):
         "enabled_count": len(enabled),
         "total_size": total_size,
         "token_health": setup_state.token_health(),
+        # A standing reminder: the switch is off by default on purpose.
+        "assets_reminder": bool(repos) and db.count_repos_with_assets() == 0,
         "health": _health(repos, time.time()),
         "live_jobs": viewhelpers.live_jobs(),
         "running_types": {key for key in jobs.JOBS if jobs.is_running(key)},

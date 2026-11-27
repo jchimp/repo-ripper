@@ -117,6 +117,8 @@ Do one of these:
   week. A mirror that fails gets the tag `verify failed`.
 - **Capture metadata** downloads pull requests, issues, comments and releases
   from the GitHub API to JSON files next to each mirror. See [Metadata](#metadata).
+- **Download release files** stores the files of the newest releases, for the
+  repositories that have the switch on. See [Release files](#release-files).
 
 Each job has a cron schedule (Settings) and a **Run now** button (Dashboard).
 While a job runs, the dashboard and the job page show the progress, the
@@ -212,8 +214,9 @@ What the job captures for each repository:
 - Pull requests: the pull request, its conversation comments, its review
   comments (comments on diff lines), its reviews, and its commit list.
 - Issues and their comments.
-- Labels, milestones, and releases. For a release asset the job stores the
-  name, size and URL. It does not download the asset file.
+- Labels, milestones, and releases. For a release file this job stores the
+  name, size and URL. The files themselves are a separate job: see
+  [Release files](#release-files).
 - The GitHub repository object (description, topics, default branch).
 
 Where the data is stored: in plain JSON files in a folder next to the mirror.
@@ -271,6 +274,35 @@ are stored locally, also when the source fork is deleted. To get them:
 ```bash
 git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git log refs/pull/<number>/head
 ```
+
+## Release files
+
+A release on GitHub can have files: the files that the author attached (build
+zips, installers) and the "Source code" archives that GitHub makes (.zip and
+.tar.gz). The attached files exist only on GitHub. The job **Download release
+files** stores both kinds.
+
+- **Off by default.** Release files can be very large. Turn on the "release
+  files" switch of a repository in the Repositories table, or on its Releases
+  page. The repository also needs the metadata switch, because the list of
+  releases comes from the metadata.
+- **Reminder.** While no repository has the switch on, the dashboard shows a
+  notice. The Releases page of a repository shows a notice while its switch is off.
+- **Newest releases only.** Settings, section Metadata: "Newest releases for
+  each repository" (default 10, 0 = all).
+- **Size limit.** Settings, section Metadata: "Largest file (MB)" (default 2048).
+  A larger file is not stored and shows as "too large".
+- **Nothing is deleted.** If a release or a file is removed on GitHub, the local
+  copy stays and shows as "removed upstream". A release that is no longer one
+  of the newest keeps its files.
+- **Checks.** Each file is written under a temporary name and renamed when it
+  is complete. The size must agree with GitHub's list, and the SHA-256 checksum
+  too when GitHub gives one. The job stops when the disk has less than 500 MB
+  of free space after the next file.
+- **Where.** `<mirror folder>/<owner>/<repo>.meta/assets/<release id>/files/`
+  and `.../source/`. The file `assets/index.json` lists the state of each file.
+  The protection copy includes these folders.
+- **Download.** The Releases page of a repository has a link for each stored file.
 
 ## Browse
 

@@ -29,6 +29,30 @@ class FakeRepo:
         self.milestones = [{"number": 1, "title": "v1", "state": "closed"}]
         self.releases = [{"id": 1, "tag_name": "v1.0", "name": "First", "body": "Notes",
                           "assets": [{"name": "app.zip", "size": 123}]}]
+        self.asset_bytes: dict[int, bytes] = {}   # asset id -> file content
+        self.archives: dict[str, bytes] = {}      # "zipball/<tag>" -> file content
+
+    def add_release(self, rid: int, tag: str, published_at: str,
+                    files: dict[str, bytes] | None = None, *, digest: bool = True) -> dict:
+        """Add a release with attached files and source archives."""
+        import hashlib
+        base = f"{API}/repos/{self.full_name}"
+        assets = []
+        for i, (name, content) in enumerate((files or {}).items()):
+            aid = rid * 100 + i
+            self.asset_bytes[aid] = content
+            asset = {"id": aid, "name": name, "size": len(content),
+                     "updated_at": published_at, "url": f"{base}/releases/assets/{aid}"}
+            if digest:
+                asset["digest"] = "sha256:" + hashlib.sha256(content).hexdigest()
+            assets.append(asset)
+        self.archives[f"zipball/{tag}"] = f"zip of {tag}".encode()
+        self.archives[f"tarball/{tag}"] = f"tar of {tag}".encode()
+        rel = {"id": rid, "tag_name": tag, "name": f"Release {tag}", "body": "Notes",
+               "published_at": published_at, "assets": assets,
+               "zipball_url": f"{base}/zipball/{tag}", "tarball_url": f"{base}/tarball/{tag}"}
+        self.releases.append(rel)
+        return rel
 
     def add_issue(self, number: int, title: str, updated_at: str, *, state: str = "open",
                   comments: int = 0, labels: tuple[str, ...] = (), author: str = "ann") -> None:
@@ -145,7 +169,14 @@ class FakeGitHub:
         repo = self.repos.get(match.group(1)) if match else None
         if repo is None:
             return httpx.Response(404, headers=headers, json={"message": "Not Found"})
-        result = self._route(repo, match.group(2) or "", request)
+        rest = match.group(2) or ""
+        blob = repo.archives.get(rest)
+        asset = re.match(r"^releases/assets/(\d+)$", rest)
+        if asset and request.headers.get("Accept") == "application/octet-stream":
+            blob = repo.asset_bytes.get(int(asset.group(1)))
+        if blob is not None:
+            return httpx.Response(200, headers=headers, content=blob)
+        result = self._route(repo, rest, request)
         if result is None:
             return httpx.Response(404, headers=headers, json={"message": "Not Found"})
         if isinstance(result, tuple):

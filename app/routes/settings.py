@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .. import db, fsbrowse, jobs, notify, runtime, scheduler, setup_state
 from ..config import get_settings
+from ..metadata import assets_job
 from ..web import render
 
 router = APIRouter()
@@ -52,6 +53,8 @@ def _page(request: Request, extra: dict | None = None, status_code: int = 200) -
         "secrets_set": secrets_set,
         "job_specs": list(jobs.JOBS.values()),
         "pull_workers": jobs.pull_workers(),
+        "assets_keep_releases": assets_job.keep_releases(),
+        "assets_max_mb": assets_job.max_mb(),
         "cfg": get_settings(),
         "mirror_root": runtime.mirror_root(),
         "protection_root": runtime.protection_root(),
@@ -81,6 +84,12 @@ async def settings_save(request: Request):
             workers = 0  # not a number: keep the stored value
         if workers:
             db.set_setting("pull_workers", str(max(1, min(8, workers))))
+    # Whole numbers with limits. A value that is not a number keeps the stored one.
+    for key, low, high in (("assets_keep_releases", 0, 100000),
+                           ("assets_max_mb", 1, assets_job.MAX_MB_LIMIT)):
+        raw = str(form.get(key) or "").strip()
+        if raw.isdigit():
+            db.set_setting(key, str(max(low, min(high, int(raw)))))
     for key in _SECRET_KEYS:
         value = str(form.get(key) or "").strip()
         if value:

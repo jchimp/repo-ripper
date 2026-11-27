@@ -33,6 +33,10 @@ Placeholders used in this document:
       pulls/<n>.json    the pull request, its comments, reviews, commit list
       issues/<n>.json   the issue and its comments
       releases.json  labels.json  milestones.json  repo.json  state.json
+      assets/         release files, when the switch is on:
+        index.json                 the state of each file
+        <release id>/files/<name>  files that the author attached
+        <release id>/source/<name> GitHub's source archives (.zip, .tar.gz)
 ```
 
 - The `.git` folders are standard bare repositories. Each git tool can read them.
@@ -54,7 +58,8 @@ What it shows:
   A pull request page has the conversation (comments, reviews, review
   comments), the commit list, and the changed files. The changed files are
   computed from the local mirror.
-- **Releases**: the notes and the asset names.
+- **Releases**: the notes, and a download link for each release file that is
+  stored (see "Release files" in the README; the download is off by default).
 - **Wiki**: the files of the wiki mirror.
 
 What it cannot do:
@@ -63,7 +68,8 @@ What it cannot do:
 - It is not a git server. You cannot `git clone` from its address. Use the
   commands in section 3.
 - It does not load remote images in a README or a comment. It shows a link.
-- It does not store release asset files. It shows their names and sizes.
+- Release files are stored only for repositories that have the "release
+  files" switch on. For the others it shows their names and sizes.
 - A file that is stored with Git LFS shows as its small pointer text.
 - The search finds exact text in one revision. It does not search in issues
   or pull request text. (The list pages search in title, author and labels.)

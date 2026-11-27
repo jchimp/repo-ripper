@@ -6,10 +6,13 @@ transient errors, and raises `RateLimited` on a rate limit so that the job can
 stop and continue on the next run. The token is never logged and never put in
 an exception message.
 """
+import hashlib
+import os
 import time
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -54,6 +57,14 @@ def _needed_permission(path: str) -> str:
     if "/releases" in path:
         return '"Contents"'
     return '"Metadata"'
+
+
+class TooLarge(GitHubError):
+    """A download was stopped because the file is larger than the size limit."""
+
+    def __init__(self, max_bytes: int) -> None:
+        super().__init__(f"The file is larger than the size limit ({max_bytes} bytes).")
+        self.max_bytes = max_bytes
 
 
 class RateLimited(Exception):
@@ -139,6 +150,76 @@ class GitHubClient:
                 continue
             return self._check(resp)
         raise GitHubError(f"GitHub did not answer after {_RETRIES + 1} attempts ({last_problem})")
+
+    def download(self, url: str, dest: Path, *, accept: str | None = None,
+                 max_bytes: int | None = None) -> tuple[int, str]:
+        """Stream one file from the GitHub API to `dest`.
+
+        GitHub answers a download with a redirect to a storage host. httpx
+        follows it and does not send the token to that other host.
+
+        Args:
+            url: An API URL (an asset `url`, a `zipball_url` or a `tarball_url`).
+                A URL on a host that is not the API host is refused, so that a
+                bad value in stored JSON cannot send the token somewhere else.
+            dest: File to write. The caller gives a temporary name and renames it.
+            accept: `Accept` header, for example `application/octet-stream`.
+            max_bytes: Stop when the file is larger than this.
+
+        Returns:
+            `(size in bytes, sha256 hex digest)`.
+
+        Raises:
+            TooLarge: The file is larger than `max_bytes`. `dest` is removed.
+            RateLimited, NotFound, GitHubError: As for `get`.
+        """
+        target = self._base.join(url)
+        if target.host != self._base.host or target.scheme != self._base.scheme:
+            raise GitHubError(f"Refused a download URL on a different host: {target.host}")
+        if self.remaining == 0 and self.reset_at and time.time() < self.reset_at:
+            raise RateLimited(self.reset_at)
+
+        headers = {"Accept": accept} if accept else None
+        last_problem = ""
+        for attempt in range(_RETRIES + 1):
+            if attempt:
+                _sleep(_BACKOFF_SECONDS * 2 ** (attempt - 1))
+            self.requests += 1
+            digest = hashlib.sha256()
+            size = 0
+            try:
+                with self._http.stream("GET", target, headers=headers) as resp:
+                    # The limit headers come from the API host. The storage
+                    # host that serves the bytes sends none.
+                    for hop in [*resp.history, resp]:
+                        if hop.url.host == self._base.host:
+                            self._note_headers(hop)
+                    if resp.status_code in _RETRY_STATUS:
+                        last_problem = f"HTTP {resp.status_code}"
+                        continue
+                    if not 200 <= resp.status_code < 300:
+                        resp.read()
+                        self._check(resp)
+                    with dest.open("wb") as fh:
+                        for chunk in resp.iter_bytes(1024 * 1024):
+                            size += len(chunk)
+                            if max_bytes is not None and size > max_bytes:
+                                raise TooLarge(max_bytes)
+                            digest.update(chunk)
+                            fh.write(chunk)
+                        fh.flush()
+                        os.fsync(fh.fileno())
+                return size, digest.hexdigest()
+            except httpx.TransportError as exc:
+                last_problem = f"{type(exc).__name__}: {exc}"
+                dest.unlink(missing_ok=True)
+                continue
+            except BaseException:
+                dest.unlink(missing_ok=True)
+                raise
+        dest.unlink(missing_ok=True)
+        raise GitHubError(f"The download did not complete after {_RETRIES + 1} attempts "
+                          f"({last_problem})")
 
     def get_json(self, path: str, params: dict | None = None) -> Any:
         """GET one resource and return the parsed JSON body."""
