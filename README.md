@@ -416,6 +416,14 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
 - Bad cron strings are ignored on save; the previous schedule stays in effect.
 - Ports, image, and mounts are all in `docker-compose.yml`.
 
+## Project documents
+
+- [CHANGELOG.md](CHANGELOG.md): what changed.
+- [docs/DECISIONS.md](docs/DECISIONS.md): the decisions behind the design, with reasons.
+- [docs/PROGRESS.md](docs/PROGRESS.md): current state and open items.
+- [docs/HOSTING.md](docs/HOSTING.md): browse and host the mirrors locally.
+- [CLAUDE.md](CLAUDE.md): instructions for an AI assistant or a new developer.
+
 ## License
 
 [MIT License](LICENSE)
