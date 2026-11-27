@@ -467,8 +467,9 @@ def run_pull_job() -> None:
             db.finish_job(jid, _overall(by_status), ok, fail, summary,
                           progress.log_text(jid))
             everything = db.list_repos()
-            db.add_history_snapshot(jid, len(everything), ok, fail,
-                                    sum((r["size_bytes"] or 0) for r in everything))
+            sizes = db.size_totals(everything)
+            db.add_history_snapshot(jid, len(everything), ok, fail, sizes["code"] or 0,
+                                    sizes["meta"], sizes["assets"])
             notify.notify_job("pull", fail == 0,
                               summary + failed_names_text(by_status["error"]))
         except Exception as exc:

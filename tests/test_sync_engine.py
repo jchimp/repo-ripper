@@ -568,6 +568,8 @@ def test_pull_job_goes_on_after_a_failure(app_db, remotes: Remotes,
     assert (history[0]["ok_count"], history[0]["fail_count"]) == (3, 1)
     assert history[0]["repo_count"] == 6
     assert history[0]["total_bytes"] == sum(r["size_bytes"] or 0 for r in db.list_repos())
+    # No metadata job and no release files job ran: not measured, not 0.
+    assert history[0]["meta_bytes"] is None and history[0]["assets_bytes"] is None
     assert sent[0][0] == "pull" and sent[0][1] is False
     assert "Failed: octo/broken" in sent[0][2]
 
@@ -837,28 +839,50 @@ def test_verify_job_ok_and_corrupt(app_db, remotes: Remotes,
 
 # --- chart -----------------------------------------------------------------------
 
+def _one(points: list[tuple[float, int]]):
+    return viewhelpers.size_chart([ts for ts, _ in points],
+                                  [("Code", "code", [size for _, size in points])])
+
+
 def test_size_chart_empty_states() -> None:
-    assert viewhelpers.size_chart([]) is None
-    assert viewhelpers.size_chart([(1_700_000_000.0, 5000)]) is None
+    assert _one([]) is None
+    assert _one([(1_700_000_000.0, 5000)]) is None
 
 
 def test_size_chart_with_points() -> None:
     day = 86400
     points = [(1_700_000_000.0 + i * day, (i + 1) * 300 * 1024 * 1024) for i in range(8)]
-    svg = str(viewhelpers.size_chart(points))
+    svg = str(_one(points))
     assert svg.startswith("<svg") and svg.endswith("</svg>")
     assert 'role="img"' in svg and "aria-label=" in svg and "<title>" in svg
     assert svg.count('class="chart-dot"') == 8
-    assert 'class="chart-line"' in svg and 'class="chart-area"' in svg
+    assert 'class="chart-line s-code"' in svg and 'class="chart-area s-code"' in svg
     assert "GB" in svg                              # axis labels in a readable unit
     assert svg.count('class="chart-label"') >= 4
     # Colours come from the style sheet, never from the SVG.
     for forbidden in ("#", "rgb(", "fill=", "stroke=", "style="):
         assert forbidden not in svg, forbidden
     # Two points with the same time and size 0 must not divide by zero.
-    assert viewhelpers.size_chart([(5.0, 0), (5.0, 0)]) is not None
+    assert _one([(5.0, 0), (5.0, 0)]) is not None
     many = [(1_700_000_000.0 + i * day, 1000 + i) for i in range(80)]
-    assert str(viewhelpers.size_chart(many)).count('class="chart-dot"') == 1
+    assert str(_one(many)).count('class="chart-dot"') == 1
+
+
+def test_size_chart_draws_three_series_with_gaps() -> None:
+    times = [1_700_000_000.0 + i * 86400 for i in range(4)]
+    svg = str(viewhelpers.size_chart(times, [
+        ("Code", "code", [100, 200, 300, 400]),
+        ("Metadata", "meta", [None, None, 50, 60]),   # measured from the third job on
+        ("Release files", "assets", [None, None, None, None]),
+    ]))
+    assert 'class="chart-line s-code"' in svg and 'class="chart-line s-meta"' in svg
+    assert "s-assets" not in svg                    # no value: no line, no dots
+    assert svg.count('class="chart-pt s-meta"') == 2
+    meta = re.search(r'class="chart-line s-meta" d="([^"]+)"', svg).group(1)
+    assert meta.count("M") == 1 and meta.count("L") == 1
+    # More than one line: no area, it would look like a stacked chart.
+    assert "chart-area" not in svg
+    assert "latest: " in svg.lower() and "release files —" in svg.lower()
 
 
 def test_relative_time_and_duration() -> None:
@@ -1159,7 +1183,7 @@ def test_dashboard_idle_and_running(app_db, inventory: dict[str, int]) -> None:
     assert 'aria-live="polite"' in page
     assert "<b>1</b> failing" in page and "<b>1</b> gone upstream" in page
     assert "Needs attention" in page and f'href="/repos/{inventory["octo/beta"]}"' in page
-    assert "The chart needs 2 completed pull jobs." in page
+    assert 'href="/storage"' in page        # the size chart is on the Storage page
     idle = client.get("/live", headers={"HX-Request": "true"})
     assert idle.headers["HX-Refresh"] == "true"
 
@@ -1199,8 +1223,9 @@ def test_dashboard_all_good_and_chart(app_db, remotes: Remotes) -> None:
     jobs.run_pull_job()
     page = client.get("/").text
     assert "All good." in page
-    assert '<svg class="chart"' in page
     assert "No failed or stale repository." in page
+    # Two real pull jobs: the Storage page draws the code line.
+    assert 'class="chart-line s-code"' in client.get("/storage").text
 
     job = db.recent_jobs(1)[0]
     job_page = client.get(f"/jobs/{job['id']}").text

@@ -10,6 +10,15 @@ the version. Each line names the pull request (PR) that made the change.
 
 ### Added
 
+- **Storage page** (`/storage`, new item in the header between Jobs and
+  Settings). It shows the two storage folders (path, marker file, used and
+  free disk space), the size of code, metadata and release files, the 10
+  largest repositories, the protection copy (last run, next run, recent runs,
+  "Run now") and the size history. (PR: storage-page)
+- The metadata job records the size of each repository's metadata folder
+  (without release files). Each pull job also stores the totals of metadata and
+  release files in the size history. Migrations `0032_repo_meta_bytes.sql` and
+  `0041_history_sizes.sql`. (PR: storage-page)
 - **Tabs on the Settings page**: Storage and token, Discovery, Metadata,
   Schedules, Protection copy and Notifications. Each tab has its own URL
   (`/settings/<tab>`) and its own Save button. `/settings` opens the first tab.
@@ -26,6 +35,13 @@ the version. Each line names the pull request (PR) that made the change.
 
 ### Changed
 
+- The chart "Mirror size over time" moved from the Dashboard to the Storage
+  page as "Size over time", with one line each for code, metadata and release
+  files. The Dashboard card "Mirror size" links to the Storage page.
+  (PR: storage-page)
+- Below 560 px width the page links in the header scroll sideways in one row,
+  and the user name is not shown. Before, the links ran off the screen.
+  (PR: storage-page)
 - A save on one Settings tab writes only the values of that tab. Before, the one
   big form set every checkbox that was not in the form to off. "Parallel pulls"
   moved from its own Sync section to the Discovery tab. A bad schedule shows the

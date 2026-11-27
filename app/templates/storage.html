@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% set active = "storage" %}
+{% macro size(value) %}{% if value is none %}<span class="muted">not measured</span>{% else %}{{ value | fmt_size }}{% endif %}{% endmacro %}
+{% block content %}
+<div class="eyebrow">Backup data</div>
+<div class="page-head">
+  <h1>Storage</h1>
+  <span class="spacer"></span>
+  <a class="btn" href="/settings/storage">Folder settings</a>
+</div>
+
+{# Folders: path, marker file, disk space. The protection copy has no size of its own here. #}
+<div class="grid storage-folders">
+  {% for f in folders %}
+  <div class="card">
+    <div class="k">{{ f.label }}</div>
+    <div class="folder-path mono-cell">{{ f.path }}</div>
+    {% if f.marker_ok %}
+    <div class="folder-state"><span class="pill ok">marker found</span></div>
+    {% else %}
+    <div class="folder-state"><span class="pill error">marker missing</span></div>
+    <div class="hint">The jobs do not write to this folder. The NAS share is probably not
+      mounted. If you moved the folder, select it again in
+      <a href="/settings/storage">Settings, Storage and token</a>.</div>
+    {% endif %}
+    {% if f.total %}
+    <div class="bar disk-bar" role="img"
+         aria-label="{{ f.used_percent }} percent of the disk is used"><span style="width:{{ f.used_percent }}%"></span></div>
+    <div class="disk-text">
+      <span>{{ f.used | fmt_size }} used</span>
+      <span>{{ f.free | fmt_size }} free</span>
+      <span class="muted">of {{ f.total | fmt_size }}</span>
+    </div>
+    {% else %}
+    <div class="hint">Disk space not available: the folder does not exist or does not answer.</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# Sizes of the backup data, from the database. #}
+<div class="grid stats">
+  <div class="card">
+    <div class="k"><span class="chart-key s-code"></span>Code (mirrors)</div>
+    <div class="v">{{ size(sizes.code) }}</div>
+  </div>
+  <div class="card">
+    <div class="k"><span class="chart-key s-meta"></span>Metadata</div>
+    <div class="v">{{ size(sizes.meta) }}</div>
+    {% if meta_unmeasured %}<div class="hint">Not measured yet for {{ meta_unmeasured }}
+      {{ 'repository' if meta_unmeasured == 1 else 'repositories' }}. The next "Capture metadata" run measures them.</div>{% endif %}
+  </div>
+  <div class="card">
+    <div class="k"><span class="chart-key s-assets"></span>Release files</div>
+    <div class="v">{{ size(sizes.assets) }}</div>
+  </div>
+  <div class="card">
+    <div class="k">Total</div>
+    <div class="v">{{ size_sum | fmt_size }}</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Size over time</h2>
+    <span class="spacer"></span>
+    {% if chart %}
+    <span class="chart-legend">
+      <span><span class="chart-key s-code"></span>Code</span>
+      <span><span class="chart-key s-meta"></span>Metadata</span>
+      <span><span class="chart-key s-assets"></span>Release files</span>
+    </span>
+    <span class="mono-cell muted">{{ history | length }} pull jobs</span>
+    {% endif %}
+  </div>
+  <div class="panel-body pad">
+    {% if chart %}
+    {{ chart }}
+    {% else %}
+    <div class="empty chart-empty">
+      The chart needs 2 completed pull jobs. There {{ 'is 1' if history | length == 1 else 'are 0' }} now.
+      Each "Pull mirrors" run adds one point.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Largest repositories</h2>
+    {% if largest %}<span class="count">{{ largest | length }}</span>{% endif %}
+  </div>
+  <div class="panel-body table-scroll">
+    {% if largest %}
+    <table>
+      <thead>
+        <tr><th>Repository</th><th class="num">Code</th><th class="num">Metadata</th>
+          <th class="num">Release files</th><th class="num">Total</th></tr>
+      </thead>
+      <tbody>
+        {% for row in largest %}
+        <tr>
+          <td><a class="repo-name" href="/repos/{{ row.repo.id }}">{{ row.repo.full_name }}</a></td>
+          <td class="num mono-cell">{{ row.repo.size_bytes | fmt_size }}</td>
+          <td class="num mono-cell">{{ row.repo.meta_bytes | fmt_size }}</td>
+          <td class="num mono-cell">{{ row.repo.assets_bytes | fmt_size }}</td>
+          <td class="num mono-cell">{{ row.total | fmt_size }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% elif repo_count %}
+    <div class="empty">No size is recorded yet. Run "Pull mirrors".</div>
+    {% else %}
+    <div class="empty">No repositories yet. Run "Scan GitHub", then "Pull mirrors".</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel" id="protection">
+  <div class="panel-head">
+    <h2>Protection copy</h2>
+    <span class="spacer"></span>
+    <a href="/settings/schedules">Schedule</a>
+    <a href="/settings/protection">Settings</a>
+    <form method="post" action="/run/protection?back=storage" hx-post="/run/protection?back=storage"
+          class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if protection_running %}
+      <button type="submit" class="primary" disabled>Running</button>
+      {% else %}
+      <button type="submit" class="primary">Run now</button>
+      {% endif %}
+    </form>
+  </div>
+  <div class="panel-body">
+    {% if protection_skipped %}
+    <div class="notice">The protection copy was skipped in setup. It runs only by hand
+      unless you set a schedule.</div>
+    {% endif %}
+    <dl class="facts pad-facts">
+      <div><dt>Last run</dt><dd>
+        {%- if protection_runs -%}
+        <span class="pill {{ protection_runs[0].status }}">{{ protection_runs[0].status }}</span>
+        {{ protection_runs[0].started_at | ago }}
+        {%- else -%}<span class="muted">never</span>{%- endif -%}
+      </dd></div>
+      <div><dt>Next run</dt><dd>{{ protection_next or 'manual only' }}</dd></div>
+    </dl>
+    {% if protection_runs %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Status</th><th>Started</th><th>Duration</th><th>Result</th><th></th></tr></thead>
+        <tbody>
+          {% for j in protection_runs %}
+          <tr>
+            <td><span class="pill {{ j.status }}">{{ j.status }}</span></td>
+            <td class="mono-cell"><span title="{{ j.started_at | fmt_time }}">{{ j.started_at | ago }}</span></td>
+            <td class="mono-cell">
+              {%- if j.finished_at -%}{{ (j.finished_at - j.started_at) | fmt_duration }}{%- else -%}—{%- endif -%}
+            </td>
+            <td>{{ j.summary or '—' }}</td>
+            <td><a href="/jobs/{{ j.id }}">details</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel-foot"><a href="/jobs?type=protection">All protection copy runs</a></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

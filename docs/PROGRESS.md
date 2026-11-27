@@ -1,16 +1,16 @@
 # Project Progress
 
 ## Current Focus
-UI work for 0.3.0: 3 of 5 PRs merged (#17 theme, #18 Jobs, #19 repository tabs); settings tabs (UI 4/5) in review. Next: the Storage page (UI 5/5), then the release PR. See `docs/HANDOFF.md`.
+UI work for 0.3.0: 4 of 5 PRs merged (#17 theme, #18 Jobs, #19 repository tabs, #21 settings tabs); Storage page (UI 5/5) in review. Next: the Storage page (UI 5/5), then the release PR. See `docs/HANDOFF.md`.
 
 ## Open Todos
 - [x] UI 1/5: GitHub-style theme, light and dark, with Octicons (PR #17)
 - [x] UI 2/5: Jobs page: live panel plus all job runs, with pages and filters; "Recent jobs" leaves the Dashboard (PR #18)
 - [x] UI 3/5: Repository tabs: Active (mine, backup on), Other (mine, backup off), Watched (with the watch panel), All (PR #19)
-- [x] UI 4/5: Settings tabs: vertical, one URL and one Save button for each section (PR: settings-tabs)
-- [ ] UI 5/5: Storage page: folders, marker, disk space, protection copy, sizes of code / metadata / release files, charts (migration 0032)
+- [x] UI 4/5: Settings tabs: vertical, one URL and one Save button for each section (PR #21)
+- [x] UI 5/5: Storage page: folders, marker, disk space, protection copy, sizes of code / metadata / release files, chart (migrations 0032, 0041; PR: storage-page)
 - [ ] Release 0.3.0 after the five UI PRs
-- [ ] Manual checks of PRs #17, #18 and #19 (numbered lists in each PR): phone width, Firefox, the HTMX filters and bulk actions in a real browser
+- [ ] Manual checks of PRs #17, #18, #19, #21 and the Storage page PR (numbered lists in each PR): phone width, Firefox, the HTMX filters and bulk actions in a real browser
 - [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (PR #15)
 - [x] Tag `v0.2.0` on `main` after the release PR is merged
 - [x] Review follow-up: Settings with a bad schedule, in both themes (the message box was too wide; fixed in settings-tabs, checked in screenshots)
@@ -39,6 +39,7 @@ r-shots-*`
 ## Progress Log
 
 ### 2026-11-27
+- Merged PR #21 (settings tabs). Storage page (UI 5/5, branch `storage-page`): folders, disk space, sizes, protection copy, three-line size chart; the chart left the Dashboard. Metadata size now recorded by the metadata job. Header links scroll sideways below 560 px.
 - Settings tabs (UI 4/5, branch `settings-tabs`): six tabs, each with its own URL, form and Save button. A save writes only the keys of its tab. Old `POST /settings` removed. Error boxes on Settings no longer wider than the form.
 - Deleted the merged branches `progress-handoff` and `review-fixes` (local). The remote branches of PRs #17 to #20 were already gone.
 - Planned five UI PRs (theme, Jobs, repository tabs, settings tabs, Storage). Jeremy accepted all recommendations: theme first, third tab "Watched", one Save button for each settings tab, Octicons but no GitHub logo, release as 0.3.0.

@@ -478,6 +478,23 @@ def test_job_captures_two_repositories(app_fake: FakeGitHub) -> None:
     assert not store.has_metadata("octo/off") and not store.has_metadata("octo/no-backup")
 
 
+def test_job_records_the_metadata_size_without_release_files(app_fake: FakeGitHub) -> None:
+    enrol(DEMO)
+    assert repo_row(DEMO)["meta_bytes"] is None             # not measured yet
+    # Release files have their own size; the metadata size leaves them out.
+    assets = store.meta_dir(DEMO) / "assets" / "v1"
+    assets.mkdir(parents=True)
+    (assets / "big.bin").write_bytes(b"x" * 50_000)
+
+    meta_job.run_metadata_job()
+    base = store.meta_dir(DEMO)
+    expected = sum(p.stat().st_size for p in base.rglob("*")
+                   if p.is_file() and "assets" not in p.relative_to(base).parts)
+    assert expected > 0
+    assert repo_row(DEMO)["meta_bytes"] == expected == store.meta_bytes(DEMO)
+    assert store.meta_bytes("octo/never-captured") == 0
+
+
 def test_job_stops_on_rate_limit_and_continues_next_run(app_fake: FakeGitHub) -> None:
     for name in ("octo/second", "octo/third"):
         app_fake.add_repo(name).add_issue(1, "Only issue", "2024-03-01T00:00:00Z")

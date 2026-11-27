@@ -142,6 +142,26 @@ backup off, sync now). When you turn the backup on or off, the rows move to the
 other tab. The address of a filtered list can be kept as a bookmark. Select a repository name to see its facts, its sync
 history, the last error in full, and the restore command.
 
+### Storage page
+
+The **Storage** page shows:
+
+- The mirror folder and the protection folder: the path, whether the marker
+  file `.repo-ripper-root` is there, and the used and free disk space.
+- The size of the backup data: code (the mirrors), metadata and release files,
+  and a list of the 10 largest repositories.
+- **Size over time**: one line each for code, metadata and release files. Each
+  "Pull mirrors" run adds one point.
+- The protection copy: the last run, the next run, the recent runs and a
+  **Run now** button.
+
+The jobs record the sizes; the page does not read the NAS folders. The pull job
+records the code size. "Capture metadata" records the metadata size (the
+`.meta` folder without `assets/`). "Download release files" records the size of
+the release files. Until "Capture metadata" runs after an update to this version,
+the metadata size shows "not measured". The page does not show the size of the
+protection copy.
+
 ## Watch public repositories
 
 You can mirror public repositories that are not yours. These repositories have

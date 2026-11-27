@@ -1,31 +1,52 @@
 # Handoff — repo-ripper
-_Last updated: 2026-11-27 · branch: `settings-tabs` (UI 4/5, PR open) · phase: UI work for 0.3.0, 4 of 5 built_
+_Last updated: 2026-11-27 · branch: `storage-page` (UI 5/5, PR open) · phase: UI work for 0.3.0, 5 of 5 built_
 
 ## Status
 
-The UI work for 0.3.0 has five PRs. Three are merged, one is in review:
+The UI work for 0.3.0 has five PRs. Four are merged, one is in review:
 
 | # | Part | PR | State |
 |---|---|---|---|
 | 1 | GitHub-style theme, light and dark, Octicons (decision D-27) | #17 | merged |
 | 2 | Jobs page `/jobs`: live panel, all job runs, filters, pages | #18 | merged |
 | 3 | Repository tabs: Active, Other, Watched, All | #19 | merged |
-| 4 | Settings tabs | settings-tabs | in review |
-| 5 | Storage page | — | not started |
-| — | Release 0.3.0 (version, CHANGELOG section, tag `v0.3.0`) | — | after 4 and 5 |
+| 4 | Settings tabs: six tabs, one form and Save button each | #21 | merged |
+| 5 | Storage page `/storage`: folders, sizes, protection copy, size chart | storage-page | in review |
+| — | Release 0.3.0 (version, CHANGELOG section, tag `v0.3.0`) | — | after 5 is merged |
 
-- **Verified:** `ruff` clean and `pytest` green at each merge (494 passed, 1 skipped
-  at PR #19). Headless-browser screenshots in both themes of every page that changed.
+- **Verified:** `ruff` clean and `pytest` green at each merge (523 passed, 1 skipped
+  on `storage-page`). Headless-browser screenshots in both themes of every page that changed.
 - **Not verified:** phone width, Firefox, and the HTMX parts (filters, bulk buttons,
   "Stop watching" on the All tab, theme toggle) in a real browser. Each PR has a
   numbered manual check list. This is an open todo in `docs/PROGRESS.md`.
 - **Known limit, not new:** the Backup switch in one repository row changes only that
   row. With tabs, the row stays on the old tab until the page loads again.
-- **Pending for Jeremy:** the manual checks of #17, #18 and #19; the older review
+- **Pending for Jeremy:** the manual checks of #17, #18, #19, #21 and the Storage page PR; the older review
   follow-ups in `docs/PROGRESS.md`; remove the folders `%TEMP%\rr-shots-*` (left by
   the screenshot script, the delete was not allowed in the session).
 
-## This session (settings tabs)
+## This session (storage page)
+
+- Merged #21. Branch `storage-page` (Jeremy's answers: chart with three lines; fix the
+  header at phone width; "not measured" until the next metadata run).
+- `app/routes/storage.py` + `templates/storage.html`. The page reads sizes from the
+  database only; on a page load it checks the marker file and calls
+  `shutil.disk_usage` for the two folders (an `OSError` shows "not available").
+- Sizes: `repos.size_bytes` (code, pull job), `repos.meta_bytes` (new, migration 0032,
+  `store.meta_bytes()` in the metadata job, without `assets/`), `repos.assets_bytes`
+  (release files job, existed). `sync_history` got `meta_bytes` and `assets_bytes`
+  (migration 0041); the pull job stores the totals from `db.size_totals()`.
+- `viewhelpers.size_chart(times, series)` now draws several lines with gaps for None.
+  The filled area is drawn only when there is one line. The Dashboard lost the chart.
+- "Run now" on the Storage page posts to `/run/protection?back=storage`. The return
+  page comes from a fixed map in `routes/dashboard.py` (`_RUN_BACK`), never from the
+  request as-is.
+- Header below 560 px: the links scroll sideways, the user name is hidden.
+- Screenshot note: headless Edge has a minimum layout width of about 492 px. A
+  `--window-size=420` screenshot is the 492 px layout cut at 420. Check phone width in
+  a real browser.
+
+## Session before (settings tabs)
 
 - Branch `settings-tabs`: `app/routes/settings.py` has `TABS` (slug, title, and the
   keys each tab saves). `GET /settings/{section}`, `POST /settings/{section}`;
@@ -74,7 +95,7 @@ A3: Dashboard, Repos, Jobs, Storage, Settings
 
 ## Next steps
 
-1. **Done, in review: branch `settings-tabs` (UI 4/5).** The notes below were the plan.
+1. **Done, merged as #21: branch `settings-tabs` (UI 4/5).** The notes below were the plan.
    - Routes: `GET /settings/{section}` and `POST /settings/{section}`, sections from a
      fixed list (Q1); `/settings` redirects to the first tab. Keep the existing POST
      routes `/settings/storage`, `/settings/token`, `/settings/token/remove` and
@@ -88,7 +109,8 @@ A3: Dashboard, Repos, Jobs, Storage, Settings
      Use `.state-tabs` styles where they fit; CSS variables only.
    - Tests: each tab saves only its keys (a checkbox on another tab stays "1"),
      unknown section is 404, cron error stays on Schedules, CSRF on each form.
-2. **Branch `storage-page` from `main` (UI 5/5)**, after step 1 is merged.
+2. **Done, in review: branch `storage-page` (UI 5/5).** The notes below were the plan; see
+   "This session" for what changed (release file sizes already existed; one chart, three lines).
    - New `app/routes/storage.py` (add it to the private tuple in `app/main.py`) and
      `templates/storage.html`; header item "Storage" (Q3).
    - Folders: mirror and protection paths from `runtime.py`, the marker state from
@@ -123,6 +145,6 @@ Make temp folders inside the session scratchpad, not in `%TEMP%`.
 ## Resume prompt
 
 > In the repo-ripper repository, read `docs/HANDOFF.md`, `CLAUDE.md` and
-> `docs/PROGRESS.md`. Confirm that `main` has the `settings-tabs` PR merged and no
-> open UI branches, then make a short plan for UI 5/5 (Storage page) on a new
-> branch `storage-page` from `main`, using answers A2 and A3, and wait for my go.
+> `docs/PROGRESS.md`. Confirm that `main` has the `storage-page` PR merged and no
+> open UI branches, then make the release PR `release-0.3.0` from `main` (step 3 of
+> "Next steps") and wait for my review.

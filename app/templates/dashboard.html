@@ -22,7 +22,7 @@
     <div class="v">{{ enabled_count }}{% if repo_count %} <small>of {{ repo_count }}</small>{% endif %}</div>
   </div>
   <div class="card">
-    <div class="k">Mirror size</div>
+    <div class="k">Mirror size · <a href="/storage">Storage</a></div>
     <div class="v">{{ total_size | fmt_size }}</div>
   </div>
   <div class="card">
@@ -59,50 +59,30 @@
   {% endfor %}
 </div>
 
-<div class="dash-cols">
-  <div class="panel" id="attention">
-    <div class="panel-head">
-      <h2>Needs attention</h2>
-      {% if health.attention %}<span class="count">{{ health.attention | length + health.attention_more }}</span>{% endif %}
-    </div>
-    <div class="panel-body">
-      {% if health.attention %}
-      <ul class="attn-list">
-        {% for item in health.attention %}
-        <li>
-          <span class="pill {{ 'skipped' if item.kind == 'stale' else item.kind }}">{{ item.label }}</span>
-          <a class="repo-name" href="/repos/{{ item.repo.id }}">{{ item.repo.full_name }}</a>
-          <span class="attn-text">{{ item.text }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% if health.attention_more %}
-      <div class="panel-foot"><a href="/repos?tab=all&amp;sort=status">{{ health.attention_more }} more. Open the list with the problems first.</a></div>
-      {% endif %}
-      {% elif repo_count %}
-      <div class="empty">No failed or stale repository.</div>
-      {% else %}
-      <div class="empty">No repositories yet. Run "Scan GitHub", then "Pull mirrors".</div>
-      {% endif %}
-    </div>
+<div class="panel" id="attention">
+  <div class="panel-head">
+    <h2>Needs attention</h2>
+    {% if health.attention %}<span class="count">{{ health.attention | length + health.attention_more }}</span>{% endif %}
   </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <h2>Mirror size over time</h2>
-      <span class="spacer"></span>
-      {% if chart %}<span class="mono-cell muted">{{ history | length }} pull jobs</span>{% endif %}
-    </div>
-    <div class="panel-body pad">
-      {% if chart %}
-      {{ chart }}
-      {% else %}
-      <div class="empty chart-empty">
-        The chart needs 2 completed pull jobs. There {{ 'is 1' if history | length == 1 else 'are 0' }} now.
-        Each "Pull mirrors" run adds one point.
-      </div>
-      {% endif %}
-    </div>
+  <div class="panel-body">
+    {% if health.attention %}
+    <ul class="attn-list">
+      {% for item in health.attention %}
+      <li>
+        <span class="pill {{ 'skipped' if item.kind == 'stale' else item.kind }}">{{ item.label }}</span>
+        <a class="repo-name" href="/repos/{{ item.repo.id }}">{{ item.repo.full_name }}</a>
+        <span class="attn-text">{{ item.text }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if health.attention_more %}
+    <div class="panel-foot"><a href="/repos?tab=all&amp;sort=status">{{ health.attention_more }} more. Open the list with the problems first.</a></div>
+    {% endif %}
+    {% elif repo_count %}
+    <div class="empty">No failed or stale repository.</div>
+    {% else %}
+    <div class="empty">No repositories yet. Run "Scan GitHub", then "Pull mirrors".</div>
+    {% endif %}
   </div>
 </div>
 
