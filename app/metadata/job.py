@@ -1,5 +1,5 @@
 """The scheduled job that captures metadata for every selected repository."""
-from .. import db, jobs, notify, runtime
+from .. import db, jobs, notify, runtime, storage_guard
 from . import capture
 from .client import GitHubClient, format_time
 
@@ -19,6 +19,10 @@ def run_metadata_job() -> None:
         jid = db.start_job(JOB_KEY)
         if not db.get_bool("metadata_enabled", True):
             db.finish_job(jid, "skipped", 0, 0, "Metadata capture is off in Settings.", "")
+            return
+        problem = storage_guard.mirror_problem()
+        if problem:
+            jobs.refuse(jid, JOB_KEY, problem)
             return
         try:
             status, ok, fail, summary, detail = _capture_all()

@@ -129,6 +129,36 @@ and "Release files off" so that many repositories can be changed at one time.
 Cost: a repository with no releases, or with the metadata switch off on
 purpose, keeps the notice on screen until its switch is on.
 
+## Safety of the copies (code review of 2026-11-26)
+
+**D-24. A storage folder is known by a marker file.** (2026-11-27)
+The app writes `.repo-ripper-root` into the mirror folder and the protection
+folder when the user selects them. A job that writes stops when the file is
+missing, and no job creates the root folder. Reason: when the NAS share is not
+mounted, the path is an empty folder on the Docker host, and the jobs wrote
+there with status "ok". Cost: a folder that is moved or restored by hand must
+be selected again in Settings. Known limit: an install from before the marker
+gets the file at its first start if the folder holds mirrors; if that start is
+done with the share not mounted and clones are on the host disk, the wrong
+folder gets the file.
+
+**D-25. The protection copy removes nothing by default.** (2026-11-27)
+`rsync --delete` is off for a new install. With it on, the job refuses to run
+when fewer than half of the repositories with a good sync are on disk. Reason:
+an empty or replaced primary share made the copy remove the mirrors that
+cannot be made again, which is against D-07. `--max-delete` was looked at and
+not used: a normal git repack removes thousands of files. Cost: the protection
+folder only grows.
+
+**D-26. A mirror keeps commits that lose their name on GitHub.** (2026-11-27)
+The update still uses `--prune` (without it a deleted branch `a` blocks a new
+branch `a/b`). Each mirror has `gc.pruneExpire=never`, so git never removes
+unreachable objects, and each update writes deleted and force-pushed refs to
+`repo-ripper-lost-refs.log` in the mirror. Reflogs are on, but git deletes the
+reflog of a deleted branch and a clone writes none, so the log file is the full
+record. Reason: D-07 was true for a repository, not inside one. Cost: a mirror
+never gets smaller. `refs/pull/<n>/merge` changes are kept but not logged.
+
 ## Process
 
 **D-22. One PR per feature, based on `main`. No stacked PRs.** (2026-11-26)

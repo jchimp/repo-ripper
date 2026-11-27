@@ -55,7 +55,9 @@ class Settings(BaseSettings):
     notify_on_success: bool = True
     notify_on_fail: bool = True
 
-    protection_delete: bool = True  # rsync --delete on the protection copy
+    # rsync --delete on the protection copy. Off: a mirror folder that is empty
+    # or damaged cannot remove files from the copy.
+    protection_delete: bool = False
 
     # cron expressions (minute hour day month weekday)
     schedule_scan: str = "0 3 * * *"        # discover repos, 03:00 daily

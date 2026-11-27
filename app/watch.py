@@ -68,7 +68,7 @@ def parse_repo_ref(text: str) -> tuple[str, str]:
     return owner, name
 
 
-def _safe_full_name(full_name: str) -> bool:
+def safe_full_name(full_name: str) -> bool:
     """True when a `full_name` from the API is safe to use as a folder path."""
     match = _SHORT_RE.fullmatch(full_name)
     return bool(match) and match["name"] not in (".", "..")
@@ -122,7 +122,7 @@ def add_repo(text: str) -> Result:
         return Result(False, str(exc))
 
     full_name = info["full_name"]
-    if not _safe_full_name(full_name):
+    if not safe_full_name(full_name):
         return Result(False, "GitHub sent a repository name that is not valid.")
     # Again with the canonical name: the typed name can be an old name.
     existing = db.get_repo_by_name(full_name)
@@ -190,7 +190,7 @@ def discover_owner(owner: Row) -> tuple[int, int]:
             continue
         if info["archived"] and not owner["include_archived"]:
             continue
-        if not _safe_full_name(info["full_name"]):
+        if not safe_full_name(info["full_name"]):
             continue
         found += 1
         if db.upsert_repo(_repo_row(info, now)):

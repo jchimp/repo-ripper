@@ -92,6 +92,20 @@ def set_setting(key: str, value: str) -> None:
         )
 
 
+def set_settings(values: dict[str, str]) -> None:
+    """Store many settings in one transaction: all of them, or none.
+
+    Args:
+        values: Setting key to new value.
+    """
+    with get_conn() as conn:
+        conn.executemany(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [(key, str(value)) for key, value in values.items()],
+        )
+
+
 def get_all_settings() -> dict[str, str]:
     with get_conn() as conn:
         return {r["key"]: r["value"] for r in conn.execute("SELECT key, value FROM settings")}
@@ -274,10 +288,13 @@ def list_repos_for_metadata() -> list[sqlite3.Row]:
 
     A repository with no capture yet comes before all others, so that a job
     that stopped on a rate limit continues with the work that is not done.
+    A repository that is gone upstream is left out: GitHub answers "not found"
+    for it on each run, and its stored metadata must stay as it is.
     """
     with get_conn() as conn:
         return conn.execute(
             "SELECT * FROM repos WHERE enabled = 1 AND metadata_enabled = 1 "
+            "AND upstream_state != 'gone' "
             "ORDER BY meta_sync_at IS NOT NULL, meta_sync_at, full_name"
         ).fetchall()
 
@@ -306,11 +323,13 @@ def list_repos_for_assets() -> list[sqlite3.Row]:
     """Repositories that get release file downloads, the oldest run first.
 
     Release files need `releases.json`, so the metadata switch must be on too.
+    A repository that is gone upstream is left out: its files cannot be
+    downloaded any more, and the stored ones stay as they are.
     """
     with get_conn() as conn:
         return conn.execute(
             "SELECT * FROM repos WHERE enabled = 1 AND metadata_enabled = 1 "
-            "AND assets_enabled = 1 "
+            "AND assets_enabled = 1 AND upstream_state != 'gone' "
             "ORDER BY assets_sync_at IS NOT NULL, assets_sync_at, full_name"
         ).fetchall()
 
@@ -368,11 +387,22 @@ def record_assets_result(full_name: str, status: str, message: str,
 
 # --- job runs ---------------------------------------------------------------
 
+# Job runs that are kept. Each row holds the full log of the run, and the
+# table has no other limit. At about six runs each day this is three months.
+JOB_RUNS_KEEP = 500
+
+
 def start_job(job_type: str) -> int:
+    """Add a job run with the status 'running' and drop the runs beyond the newest 500."""
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO job_runs (job_type, status, started_at) VALUES (?, 'running', ?)",
             (job_type, time.time()),
+        )
+        conn.execute(
+            "DELETE FROM job_runs WHERE status != 'running' AND id NOT IN ("
+            "SELECT id FROM job_runs ORDER BY id DESC LIMIT ?)",
+            (JOB_RUNS_KEEP,),
         )
         return cur.lastrowid
 
@@ -399,8 +429,7 @@ def get_job(job_id: int) -> sqlite3.Row | None:
         return conn.execute("SELECT * FROM job_runs WHERE id = ?", (job_id,)).fetchone()
 
 
-# --- added by the merged branch ---------------------------------------------
-
+# --- repositories page, sync engine -----------------------------------------
 
 # Sort keys of the Repositories page -> ORDER BY. Fixed text only: the key
 # comes from the query string and must never reach the SQL itself.

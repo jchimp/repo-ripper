@@ -179,6 +179,8 @@ def test_disk_with_too_little_space_stops(fake: FakeGitHub,
     monkeypatch.setattr(assets.shutil, "disk_usage", lambda path: usage)
     res = run()
     assert res.status == "error" and "The disk has 10 MB free" in res.message
+    # The job stops on this flag, not on the text of the message.
+    assert res.disk_full
     assert on_disk() == set()
 
 

@@ -33,12 +33,23 @@ def csrf_from(html: str) -> str:
     return match.group(1)
 
 
+def mark_storage(folder: Path) -> Path:
+    """Make a storage folder that the jobs accept: it has the marker file.
+
+    This is the state after the user selected the folder in the UI.
+    """
+    from app import storage_guard
+    folder.mkdir(parents=True, exist_ok=True)
+    storage_guard.write_marker(folder)
+    return folder
+
+
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """A signed-out client on a fresh database in a temp folder."""
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("MIRROR_ROOT", str(tmp_path / "mirrors"))
-    monkeypatch.setenv("PROTECTION_ROOT", str(tmp_path / "protection"))
+    monkeypatch.setenv("MIRROR_ROOT", str(mark_storage(tmp_path / "mirrors")))
+    monkeypatch.setenv("PROTECTION_ROOT", str(mark_storage(tmp_path / "protection")))
     # The folder browser may show only this temp folder.
     monkeypatch.setenv("BROWSE_ROOTS", str(tmp_path))
 

@@ -87,21 +87,6 @@ share. Change the owner of the folder to `1000:1000`, or mount the share with
 `uid=1000` (SMB), then select the folder again. If you mount the share after
 the container started, run `docker compose restart`.
 
-## Upgrade from a version before the setup wizard
-
-Older versions mounted the NAS at `/data/mirrors` and `/data/protection` in
-`docker-compose.yml`. The file now has one NAS mount, `/mnt/nas`. If you take
-the new file and change nothing else, the app still uses `/data/mirrors`, which
-is then a folder on the local disk of the Docker host. The next sync makes new
-clones there. No data is deleted, but the mirrors are not on the NAS.
-
-Do one of these:
-
-- Keep your two old volume lines in `docker-compose.yml`. Nothing changes.
-- Or use the new mount, then open **Settings**, **Storage**, and select the
-  folders below `/mnt/nas` that hold your mirrors and your protection copy.
-  The app finds the mirrors that are there and updates them.
-
 ## The jobs
 
 - **Scan GitHub** lists the repositories through the GitHub API and adds the
@@ -110,7 +95,9 @@ Do one of these:
 - **Pull mirrors** makes a `git clone --mirror` the first time, then runs
   `git remote update --prune`, for each repository that has the backup on. It
   mirrors 4 repositories at the same time. You can set 1 to 8 in Settings,
-  section "Sync". One repository that fails does not stop the others.
+  section "Sync". One repository that fails does not stop the others. A
+  branch or a tag that is deleted or force-pushed on GitHub loses its name in
+  the mirror, but its commits stay in the mirror. See [Restore](#restore).
 - **Protection copy** runs `rsync -a` from `MIRROR_ROOT` to `PROTECTION_ROOT`.
   With `--delete` on, the copy is an exact replica.
 - **Verify mirrors** runs `git fsck` on each mirror on disk, one time each
@@ -193,8 +180,10 @@ very large number of issues. Turn it on for a repository if you want it.
 A fine-grained PAT needs these read-only permissions: **Contents** and
 **Metadata** for the git mirrors, plus **Issues** and **Pull requests** for the
 metadata capture. Add the private repos you want it to reach. Classic PATs need the `repo` scope for
-private repos. The token is passed to git per-command via `http.extraHeader`, so
-it is never written into the mirrors' config on the NAS.
+private repos. The token goes to each git command through the environment, as
+an `http.https://github.com/.extraHeader` value. So it is never written into
+the mirrors' config on the NAS, it is not in the process list, and git sends
+it only to `github.com`.
 
 Enter the token in the setup wizard or in Settings. The app stores it encrypted
 in its database, with a key made from `SECRET_KEY`, and never shows it again.
@@ -344,13 +333,41 @@ If you change the mirror folder later (Settings, Storage), the app does not
 move data: the mirrors that exist stay in the old folder, and the next sync
 makes new clones in the new folder.
 
+When you select a storage folder, the app writes the file `.repo-ripper-root`
+into it. A job that writes stops with an error when this file is not there,
+because the NAS share is then probably not mounted. Do not delete the file; if
+you move a folder, select it again in Settings, Storage.
+
 ## Protection `--delete`
 
-On makes the copy an exact replica and drops repos deleted upstream; it also
-propagates a corrupted primary on the next run. Off makes the copy append-only
-(deleted repos linger) but shields it from primary corruption. Pick per your
-threat model — filesystem snapshots (ZFS/btrfs) on the protection pool give you
-both.
+The setting "Delete extras on the copy" (Settings) adds `--delete` to the rsync
+command. **The default is off** for a new install. An install that already has
+the setting keeps its value.
+
+- **Off:** the protection copy never removes a file. A file that is deleted
+  from the mirror folder stays in the protection folder. The copy uses more
+  disk space with time. If the mirror folder is lost, damaged or replaced by an
+  empty disk, the protection copy keeps all that it has. This is the reason for
+  the default: the protection copy must not lose data at the moment when the
+  first copy fails.
+- **On:** the protection copy is an exact replica. rsync removes from the
+  protection folder each file that is not in the mirror folder. A damaged or
+  incomplete mirror folder then also damages the copy at the next run.
+
+The protection copy does not run, and the job shows an error, in these cases:
+
+- The file `.repo-ripper-root` is not in the mirror folder or not in the
+  protection folder (see "NAS mounts and permissions").
+- "Delete" is on, and fewer than half of the repositories that had a good sync
+  are in the mirror folder. Example: the database knows 40 repositories with a
+  good sync and the mirror folder has 3. Examine the mirror folder before you
+  run the copy again.
+
+The job is skipped while the pull, metadata or release files job runs, because
+rsync must not copy a repository while a job changes it.
+
+Filesystem snapshots (ZFS, btrfs) on the protection share give you an exact
+replica and protection against a damaged mirror folder at the same time.
 
 ## Restore
 
@@ -359,6 +376,56 @@ Mirrors are plain bare repos. To restore any project:
 ```bash
 git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
 ```
+
+### Recover a deleted branch or an overwritten commit
+
+The list of branches and tags in a mirror is the list on GitHub. If a branch
+or a tag is deleted on GitHub, or a force-push replaces its commits, the next
+pull job removes the old name from the mirror. The commits stay in the mirror:
+repo-ripper sets each mirror so that git never removes them
+(`gc.pruneExpire=never`). Thus a mirror does not get smaller.
+
+Each update writes the names that were lost to a text file in the mirror:
+
+```
+/mnt/nas/git-mirrors/<owner>/<repo>.git/repo-ripper-lost-refs.log
+```
+
+Each line has the time (UTC), `deleted` or `forced`, the name, and the old
+commit id. A `forced` line also has the new id. Example:
+
+```
+2026-11-26T03:30:12Z deleted refs/heads/topic 5f0c1e2...
+2026-11-27T03:30:09Z forced refs/heads/main 91ab34c... 0d77e5a...
+```
+
+To get the commits back, clone the mirror, then fetch the old id and give it
+a branch name. These commands do not change the mirror:
+
+```bash
+git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
+cd <repo>
+git fetch origin <old id>
+git branch recovered <old id>
+```
+
+You can also give the commit a branch name in the mirror and then clone:
+
+```bash
+git --git-dir /mnt/nas/git-mirrors/<owner>/<repo>.git branch recovered <old id>
+git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
+```
+
+The next pull job removes the name `recovered` from the mirror again, because
+the name is not on GitHub. The commits stay.
+
+The file does not list the `refs/pull/<number>/merge` names. GitHub makes
+these test merges again each time the target branch changes.
+
+`git --git-dir <mirror> reflog show <branch>` also shows old commit ids of a
+branch that was force-pushed. It does not show the commit that the first
+clone stored, and git removes this record when the branch is deleted. Use the
+log file as the full record.
 
 ## Security
 
@@ -378,9 +445,25 @@ git clone /mnt/nas/git-mirrors/<owner>/<repo>.git <repo>
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt   # Windows: .venv\Scripts\pip
+.venv/bin/pip install -r requirements-dev.txt -c requirements.lock   # Windows: .venv\Scripts\pip
 .venv/bin/ruff check .
 .venv/bin/pytest
+```
+
+`requirements.txt` holds the direct dependencies. `requirements.lock` pins these
+and all indirect dependencies, for Linux and Windows. The Dockerfile and CI
+install with the lock as constraints. After a change in `requirements.txt`,
+make the lock again (this needs `uv`) and commit both files:
+
+```bash
+uv pip compile requirements.txt --universal --python-version 3.12 -o requirements.lock
+```
+
+To update all indirect dependencies, add `--upgrade` to that command. CI fails
+if a locked package has a known vulnerability. The same check on your machine:
+
+```bash
+uvx pip-audit -r requirements.lock
 ```
 
 Layout: `app/routes/` has one module per page area; add a new router to the
@@ -416,7 +499,10 @@ The UI has a light/dark toggle in the top bar; the choice is kept per browser.
 - The app keeps the newest 200 history rows for each repository.
 - The Telegram message of a pull job with failures lists the failed
   repositories (10 names at most).
-- Bad cron strings are ignored on save; the previous schedule stays in effect.
+- Settings does not save a schedule that is not valid cron. The page shows the
+  field with the error, and no value of that form is stored. If a stored
+  schedule is not valid at start, the app uses the default schedule of that
+  job, stores it, and writes a warning to the process log.
 - Ports, image, and mounts are all in `docker-compose.yml`.
 
 ## Project documents

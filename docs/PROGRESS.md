@@ -4,6 +4,10 @@
 Version 0.1.0: all planned features are in `main` and Jeremy's browser checks passed. Now: daily use on the real NAS; fix what that finds.
 
 ## Open Todos
+- [x] Code review of 2026-11-26: fix C-1, H-1 to H-4, M-1 to M-7, L-1 to L-5, L-7, L-8 (branch `review-fixes`)
+- [ ] Review follow-up, by hand in a browser: Settings with a bad schedule, in both themes (the message box can be too wide)
+- [ ] Review follow-up, on the Docker host: restart with the NAS not mounted (jobs must stop with the marker message); one protection copy to the real SMB share; one pull of a repository with Git LFS (token header now limited to github.com)
+- [ ] Review follow-up, not done: one GitHub client in place of two (L-6); a container stop during a pull (L-9); the protection copy does not block a job that starts after it, or "Sync now" of selected repositories
 - [x] Foundation: migrations, CSRF, tests, CI, light theme (PR #1)
 - [x] Setup wizard, folder picker, token in the UI (PR #2)
 - [x] Watched public repositories and owners (PR #3)
@@ -24,6 +28,11 @@ Version 0.1.0: all planned features are in `main` and Jeremy's browser checks pa
 - [x] Tag `v0.1.0` on `main` after the release PR is merged
 
 ## Progress Log
+
+### 2026-11-27
+- Senior code review of `v0.1.0` (report in `.review/`, not in git): 1 critical, 4 high, 7 medium, 9 low findings. Main theme: the jobs did not check that the mirror folder is the NAS.
+- Fixed on the branch `review-fixes`: marker file and storage check, protection copy guards and "delete" off by default, kept commits and `repo-ripper-lost-refs.log`, token header for the GitHub host only, cron check, crash guard for scan and protection, process log, dependency update with a lock and a CI audit. See `CHANGELOG.md`, "Unreleased", and D-24 to D-26.
+- Next: the three follow-up todos above, then two weeks of daily use before the project is announced.
 
 ### 2026-11-26
 - Built and merged PRs #1 to #10: wizard, watched repositories, metadata, sync engine, browser, release files, UI fixes. PR #7 repaired three stacked PRs that had merged into the wrong branches.

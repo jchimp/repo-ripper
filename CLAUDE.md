@@ -44,7 +44,8 @@ Do not change these without a new entry in `docs/DECISIONS.md`.
 
 ## Stack
 
-- Python 3.12, **pip** with pinned `requirements.txt` (dev: `requirements-dev.txt`)
+- Python 3.12, **pip** with pinned `requirements.txt` (dev: `requirements-dev.txt`) and a
+  full lock, `requirements.lock`, made with `uv pip compile` (see README, Development)
 - **FastAPI** + **Jinja2** + **HTMX 2.0.4** (vendored), small vanilla JS
 - **SQLite** through raw `sqlite3`, short-lived connections, WAL. No ORM.
 - **APScheduler** (in-process, started in the FastAPI lifespan)
@@ -60,6 +61,8 @@ app/
   main.py            app, middleware, router registration (private tuple)
   config.py          env settings (pydantic-settings); placeholder check
   runtime.py         github_token(), mirror_root(), protection_root()
+  storage_guard.py   marker file of the storage folders; checks before a job writes
+  logsetup.py        process log to stderr (docker logs)
   web.py             render(), CSRF, static_url(), shared template filters
   auth.py            single admin, sign-in throttle
   db.py              all SQL: settings, repos, job runs, logs
@@ -100,6 +103,12 @@ On the NAS, for a repository `owner/name`:
 - **Schema.** Add a new file in `app/migrations/`. Never edit a shipped file.
   Number ranges: 0001-0009 core, 0010-0019 setup, 0020-0029 watched, 0030-0039
   metadata and release files, 0040-0049 sync engine, 0050-0059 browser.
+- **Storage check.** A job that writes to the mirror folder or the protection
+  folder calls `storage_guard.mirror_problem()` (or `protection_problem()`) first
+  and stops with `jobs.refuse(...)` when the marker file is missing. A job does
+  not create the root folder.
+- **Log.** `logging.getLogger("repo-ripper")`. Never log a token, a URL that
+  holds one, or the text of an httpx exception (log the exception type).
 - **Jobs.** A job is one `jobs.register(JobSpec(...))` call. The dashboard, the
   settings page and the scheduler are built from the registry. A job takes
   `jobs._LOCKS[key]`, records `db.start_job` / `db.finish_job`, and never
@@ -155,7 +164,7 @@ The other values in `.env.example` only seed the settings table on first start.
 
 ```
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements-dev.txt    # Linux: .venv/bin/python
+.venv/Scripts/python -m pip install -r requirements-dev.txt -c requirements.lock   # Linux: .venv/bin/python
 .venv/Scripts/python -m ruff check .
 .venv/Scripts/python -m pytest
 docker compose up -d --build                                   # on the Docker host

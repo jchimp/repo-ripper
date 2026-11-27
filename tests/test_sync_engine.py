@@ -3,6 +3,7 @@
 Every "remote" is a local bare repository in `tmp_path`. No network.
 """
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -146,16 +147,319 @@ def test_partial_clone_does_not_block_the_next_clone(app_db, remotes: Remotes) -
     assert not (dest / "objects" / "junk").exists()
     assert git("rev-parse", "--is-bare-repository", cwd=dest) == "true"
 
+    # The folder with no HEAD can be a damaged mirror: it is moved, not deleted.
+    broken = [p for p in dest.parent.iterdir() if p.name.startswith("alpha.git.broken-")]
+    assert len(broken) == 1
+    assert re.fullmatch(r"alpha\.git\.broken-\d{8}-\d{6}", broken[0].name)
+    assert (broken[0] / "objects" / "junk").read_text() == "x"
+    assert res.status == "warn"
+    assert broken[0].name in res.warnings[0] and "is kept" in res.warnings[0]
+
+
+def test_folder_with_no_head_is_kept_when_the_clone_fails(app_db, remotes: Remotes) -> None:
+    dest = mirror.mirror_dir("octo/nothing")                 # no remote: the clone fails
+    (dest / "objects").mkdir(parents=True)
+    (dest / "objects" / "junk").write_text("x")
+
+    res = mirror.mirror_repo("octo/nothing", fetch_lfs=False, include_wiki=False, has_wiki=False)
+    assert (res.ok, res.action) == (False, "clone")
+    broken = [p for p in dest.parent.iterdir() if p.name.startswith("nothing.git.broken-")]
+    assert len(broken) == 1 and (broken[0] / "objects" / "junk").is_file()
+    assert broken[0].name in res.message                     # the user sees where it went
+
+
+# --- commits that lose their name upstream ---------------------------------------
+
+def _lost_log(dest: Path) -> list[list[str]]:
+    path = dest / mirror.LOST_REFS_LOG
+    if not path.exists():
+        return []
+    return [line.split(" ") for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def _has_object(dest: Path, sha: str) -> bool:
+    return subprocess.run(["git", "cat-file", "-e", sha], cwd=dest, env=_GIT_ENV,
+                          capture_output=True).returncode == 0
+
+
+def _has_reflog(dest: Path, ref: str) -> bool:
+    return subprocess.run(["git", "reflog", "exists", ref], cwd=dest, env=_GIT_ENV,
+                          capture_output=True).returncode == 0
+
+
+def _age_objects(dest: Path, days: int = 60) -> None:
+    """Make all object files old, so that the age limit of `git gc` does not keep them."""
+    old = time.time() - days * 86400
+    for path in (dest / "objects").rglob("*"):
+        if path.is_file():
+            os.utime(path, (old, old))
+
+
+def _sync_alpha() -> mirror.MirrorResult:
+    return mirror.mirror_repo("octo/alpha", fetch_lfs=False, include_wiki=False, has_wiki=False)
+
+
+def test_mirror_is_set_to_keep_unreachable_objects(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    assert _sync_alpha().status == "ok"
+    dest = mirror.mirror_dir("octo/alpha")
+    wanted = {"gc.pruneexpire": "never", "core.logallrefupdates": "always",
+              "gc.reflogexpire": "never", "gc.reflogexpireunreachable": "never"}
+    for key, value in wanted.items():
+        assert git("config", "--local", "--get", key, cwd=dest) == value
+
+    # A mirror of an older version gets the values at its next update, one time.
+    for key in wanted:
+        git("config", "--local", "--unset", key, cwd=dest)
+    assert _sync_alpha().status == "ok"
+    for key, value in wanted.items():
+        assert git("config", "--local", "--get-all", key, cwd=dest) == value
+    assert _sync_alpha().status == "ok"
+    for key, value in wanted.items():
+        assert git("config", "--local", "--get-all", key, cwd=dest) == value
+
+
+def test_deleted_branch_keeps_its_commits(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    git("checkout", "-q", "-b", "topic", cwd=work)
+    remotes.commit("octo/alpha", "topic work")
+    git("push", "-q", "origin", "topic", cwd=work)
+    assert _sync_alpha().ok
+    topic = remotes.commit("octo/alpha", "more topic work")
+    git("push", "-q", "origin", "topic", cwd=work)
+    git("checkout", "-q", "main", cwd=work)
+    assert _sync_alpha().message == "update"
+    dest = mirror.mirror_dir("octo/alpha")
+    assert git("rev-parse", "refs/heads/topic", cwd=dest) == topic
+    assert _has_reflog(dest, "refs/heads/topic")             # written by the update
+
+    git("push", "-q", "origin", "--delete", "topic", cwd=work)
+    res = _sync_alpha()
+    assert (res.ok, res.action, res.status) == (True, "update", "ok")
+    assert res.message == "update, 1 old ref kept"
+    # The mirror follows the deletion of the name ...
+    assert git("for-each-ref", "refs/heads/topic", cwd=dest) == ""
+    # ... and git removes the reflog of a deleted branch, so the log file is
+    # the only record of the id.
+    assert not _has_reflog(dest, "refs/heads/topic")
+    lines = _lost_log(dest)
+    assert len(lines) == 1
+    stamp, kind, ref, old = lines[0]
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", stamp)
+    assert (kind, ref, old) == ("deleted", "refs/heads/topic", topic)
+
+    # The commit is in the mirror, also after a garbage collection of old objects.
+    assert _has_object(dest, topic)
+    _age_objects(dest)
+    git("gc", "-q", cwd=dest)
+    assert _has_object(dest, topic)
+    assert git("fsck", "--no-dangling", cwd=dest) == ""
+
+    # The next update adds no line and does not lose the commit.
+    remotes.commit("octo/alpha", "second", push=True)
+    assert _sync_alpha().message == "update"
+    assert len(_lost_log(dest)) == 1 and _has_object(dest, topic)
+
+    # Control: with the default age limit of git, the same collection removes
+    # the commit. So `gc.pruneExpire=never` is what keeps it.
+    _age_objects(dest)
+    git("-c", "gc.pruneExpire=2.weeks.ago", "gc", "-q", cwd=dest)
+    assert not _has_object(dest, topic)
+
+
+def test_force_push_keeps_the_old_commits(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    assert _sync_alpha().ok
+    dest = mirror.mirror_dir("octo/alpha")
+    # A clone writes no reflog. The first update of a branch starts it.
+    assert not _has_reflog(dest, "refs/heads/main")
+    old = remotes.commit("octo/alpha", "second", push=True)
+    assert _sync_alpha().message == "update"
+
+    git("reset", "-q", "--hard", "HEAD~1", cwd=work)
+    new = remotes.commit("octo/alpha", "a different second")
+    git("push", "-q", "--force", "origin", "main", cwd=work)
+    res = _sync_alpha()
+    assert (res.status, res.message) == ("ok", "update, 1 old ref kept")
+    assert git("rev-parse", "refs/heads/main", cwd=dest) == new
+    lines = _lost_log(dest)
+    assert len(lines) == 1
+    assert lines[0][1:] == ["forced", "refs/heads/main", old, new]
+
+    # The update of a bare mirror writes the reflog, so the old tip has a name.
+    assert old in git("reflog", "show", "--format=%H", "refs/heads/main", cwd=dest).splitlines()
+    assert _has_object(dest, old)
+    _age_objects(dest)
+    git("gc", "-q", cwd=dest)
+    assert _has_object(dest, old)
+
+
+def test_moved_tag_is_recorded(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    git("tag", "-a", "-m", "one", "v1", cwd=work)
+    git("push", "-q", "origin", "v1", cwd=work)
+    old_tag = git("rev-parse", "refs/tags/v1", cwd=work)
+    assert _sync_alpha().ok
+    dest = mirror.mirror_dir("octo/alpha")
+
+    # The new tag points to a later commit: for commits that is a fast-forward,
+    # but the old tag object has no name after the update.
+    remotes.commit("octo/alpha", "second", push=True)
+    git("tag", "-f", "-a", "-m", "one again", "v1", cwd=work)
+    git("push", "-q", "--force", "origin", "v1", cwd=work)
+    assert _sync_alpha().message == "update, 1 old ref kept"
+    assert _lost_log(dest)[0][1:4] == ["forced", "refs/tags/v1", old_tag]
+    assert _has_object(dest, old_tag)
+
+
+def test_fast_forward_writes_no_line(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    assert _sync_alpha().ok
+    remotes.commit("octo/alpha", "second", push=True)
+    git("checkout", "-q", "-b", "new-branch", cwd=work)
+    git("push", "-q", "origin", "new-branch", cwd=work)
+    res = _sync_alpha()
+    assert (res.status, res.message) == ("ok", "update")
+    assert not (mirror.mirror_dir("octo/alpha") / mirror.LOST_REFS_LOG).exists()
+
+
+def test_generated_merge_refs_of_pull_requests_are_not_recorded(app_db,
+                                                                remotes: Remotes) -> None:
+    remote = remotes.make("octo/alpha")
+    first = git("rev-parse", "refs/heads/main", cwd=remote)
+    git("update-ref", "refs/pull/7/merge", first, cwd=remote)
+    git("update-ref", "refs/pull/7/head", first, cwd=remote)
+    assert _sync_alpha().ok
+    git("update-ref", "-d", "refs/pull/7/merge", cwd=remote)
+    git("update-ref", "-d", "refs/pull/7/head", cwd=remote)
+    assert _sync_alpha().message == "update, 1 old ref kept"
+    assert [line[2] for line in _lost_log(mirror.mirror_dir("octo/alpha"))] == [
+        "refs/pull/7/head"]
+
+
+def test_prune_lets_a_branch_name_become_a_folder(app_db, remotes: Remotes) -> None:
+    """Why the update keeps `--prune`: branch `a` deleted, branch `a/b` made."""
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    git("push", "-q", "origin", "main:refs/heads/a", cwd=work)
+    assert _sync_alpha().ok
+    git("push", "-q", "origin", "--delete", "a", cwd=work)
+    git("push", "-q", "origin", "main:refs/heads/a/b", cwd=work)
+    res = _sync_alpha()
+    assert res.ok, res.message
+    dest = mirror.mirror_dir("octo/alpha")
+    assert git("for-each-ref", "--format=%(refname)", "refs/heads/a", cwd=dest) == (
+        "refs/heads/a/b")
+    assert [line[1:3] for line in _lost_log(dest)] == [["deleted", "refs/heads/a"]]
+
+
+def test_lost_refs_log_that_cannot_be_written_is_a_warning(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    git("push", "-q", "origin", "main:refs/heads/topic", cwd=work)
+    assert _sync_alpha().ok
+    dest = mirror.mirror_dir("octo/alpha")
+    topic = git("rev-parse", "refs/heads/topic", cwd=dest)
+    (dest / mirror.LOST_REFS_LOG).mkdir()                    # a folder: the open fails
+    git("push", "-q", "origin", "--delete", "topic", cwd=work)
+
+    res = _sync_alpha()
+    assert (res.ok, res.status, res.message) == (True, "warn", "update")
+    assert mirror.LOST_REFS_LOG in res.warnings[0]
+    assert f"deleted refs/heads/topic {topic}" in res.warnings[0]     # the id is not lost
+
+
+def test_recover_a_deleted_branch_with_the_readme_commands(app_db, remotes: Remotes,
+                                                           tmp_path: Path) -> None:
+    remotes.make("octo/alpha")
+    work = remotes.root / "work" / "octo/alpha"
+    git("checkout", "-q", "-b", "topic", cwd=work)
+    remotes.commit("octo/alpha", "topic work")
+    git("push", "-q", "origin", "topic", cwd=work)
+    assert _sync_alpha().ok
+    git("push", "-q", "origin", "--delete", "topic", cwd=work)
+    assert _sync_alpha().ok
+    dest = mirror.mirror_dir("octo/alpha")
+    old = _lost_log(dest)[0][3]
+
+    # Way 1: do not change the mirror. Clone, then fetch the id.
+    restored = tmp_path / "restored"
+    git("clone", "-q", str(dest), str(restored))
+    git("fetch", "-q", "origin", old, cwd=restored)
+    git("branch", "recovered", old, cwd=restored)
+    assert git("rev-parse", "recovered", cwd=restored) == old
+    assert git("log", "-1", "--format=%s", "recovered", cwd=restored) == "topic work"
+
+    # Way 2: give the commit a branch name in the mirror, then clone.
+    git("--git-dir", str(dest), "branch", "recovered", old)
+    second = tmp_path / "restored2"
+    git("clone", "-q", str(dest), str(second))
+    assert git("rev-parse", "origin/recovered", cwd=second) == old
+    # The next update removes that name again (it is not on GitHub) and
+    # records it. The commit stays.
+    assert _sync_alpha().message == "update, 1 old ref kept"
+    assert git("for-each-ref", "refs/heads/recovered", cwd=dest) == ""
+    assert _has_object(dest, old)
+
+
+# --- wiki ------------------------------------------------------------------------
+
+def _sync_alpha_with_wiki() -> mirror.MirrorResult:
+    return mirror.mirror_repo("octo/alpha", fetch_lfs=False, include_wiki=True, has_wiki=True)
+
+
+def test_wiki_that_does_not_exist_is_not_a_warning(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    res = _sync_alpha_with_wiki()
+    assert (res.status, res.message, res.warnings) == ("ok", "clone, wiki absent", [])
+    res = _sync_alpha_with_wiki()                            # the same on each later run
+    assert (res.status, res.message, res.warnings) == ("ok", "update, wiki absent", [])
+
+
+def test_failed_update_of_a_wiki_on_disk_is_a_warning(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    wiki_remote = remotes.make("octo/alpha.wiki")
+    res = _sync_alpha_with_wiki()
+    assert (res.status, res.message) == ("ok", "clone, wiki ok")
+    assert (mirror.mirror_dir("octo/alpha.wiki") / "HEAD").is_file()
+
+    wiki_remote.rename(wiki_remote.with_name("moved-away.git"))
+    res = _sync_alpha_with_wiki()
+    assert (res.ok, res.status, res.message) == (True, "warn", "update, wiki failed")
+    assert len(res.warnings) == 1 and res.warnings[0].startswith("wiki update failed: ")
+    assert (mirror.mirror_dir("octo/alpha.wiki") / "HEAD").is_file()     # the copy stays
+
+
+def test_wiki_mirror_keeps_old_commits_too(app_db, remotes: Remotes) -> None:
+    remotes.make("octo/alpha")
+    remotes.make("octo/alpha.wiki")
+    work = remotes.root / "work" / "octo/alpha.wiki"
+    old = remotes.commit("octo/alpha.wiki", "page two", push=True)
+    assert _sync_alpha_with_wiki().ok
+    git("reset", "-q", "--hard", "HEAD~1", cwd=work)
+    remotes.commit("octo/alpha.wiki", "page two, again")
+    git("push", "-q", "--force", "origin", "main", cwd=work)
+
+    res = _sync_alpha_with_wiki()
+    assert (res.status, res.message) == ("ok", "update, wiki ok, wiki: 1 old ref kept")
+    wiki = mirror.mirror_dir("octo/alpha.wiki")
+    assert _lost_log(wiki)[0][1:4] == ["forced", "refs/heads/main", old]
+    assert _has_object(wiki, old)
+
 
 def test_lfs_failure_is_a_warning_with_the_reason(app_db, remotes: Remotes,
                                                   monkeypatch: pytest.MonkeyPatch) -> None:
     remotes.make("octo/alpha")
     real_run = mirror._run
 
-    def fake_run(cmd: list[str], timeout: int = 0) -> tuple[int, str]:
+    def fake_run(cmd: list[str], timeout: int = 0, **kw: bool) -> tuple[int, str]:
         if "lfs" in cmd:
             return 2, "batch response: Rate limit exceeded"
-        return real_run(cmd)
+        return real_run(cmd, **kw)
 
     monkeypatch.setattr(mirror, "_run", fake_run)
     res = mirror.mirror_repo("octo/alpha", fetch_lfs=True, include_wiki=False, has_wiki=False)
@@ -169,12 +473,12 @@ def test_network_error_is_retried_one_time(app_db, remotes: Remotes,
     real_run = mirror._run
     calls: list[list[str]] = []
 
-    def flaky(cmd: list[str], timeout: int = 0) -> tuple[int, str]:
+    def flaky(cmd: list[str], timeout: int = 0, **kw: bool) -> tuple[int, str]:
         if "clone" in cmd:
             calls.append(cmd)
             if len(calls) == 1:
                 return 128, "fatal: unable to access: Could not resolve host: github.com"
-        return real_run(cmd)
+        return real_run(cmd, **kw)
 
     monkeypatch.setattr(mirror, "_run", flaky)
     res = mirror.mirror_repo("octo/alpha", fetch_lfs=False, include_wiki=False, has_wiki=False)
@@ -183,9 +487,9 @@ def test_network_error_is_retried_one_time(app_db, remotes: Remotes,
 
     # A failure that is not a network error is not retried.
     calls.clear()
-    monkeypatch.setattr(mirror, "_run", lambda cmd, timeout=0: (
+    monkeypatch.setattr(mirror, "_run", lambda cmd, timeout=0, **kw: (
         calls.append(cmd) or (128, "fatal: repository not found")) if "clone" in cmd
-        else real_run(cmd))
+        else real_run(cmd, **kw))
     res = mirror.mirror_repo("octo/beta", fetch_lfs=False, include_wiki=False, has_wiki=False)
     assert not res.ok and len(calls) == 1
 
@@ -203,7 +507,8 @@ def test_token_is_scrubbed_from_stored_text(app_db, monkeypatch: pytest.MonkeyPa
     token = "ghp_SECRETsecretSECRETsecret1234"
     monkeypatch.setattr(mirror.runtime, "github_token", lambda: token)
     header = mirror._auth_header(token)
-    encoded = header.split(" ")[-1]
+    encoded = mirror._basic_credential(token)
+    assert header == f"Authorization: Basic {encoded}"
     text = mirror.scrub(f"fatal: bad config {header}\nurl https://user:{token}@github.com/x\n"
                         f"plain {token} and {encoded}")
     assert token not in text
@@ -212,7 +517,8 @@ def test_token_is_scrubbed_from_stored_text(app_db, monkeypatch: pytest.MonkeyPa
     assert "https://***@github.com/x" in text
 
     # The text that _run returns is scrubbed too.
-    code, out = mirror._run(["git", "-c", header, "not-a-git-command", token])
+    code, out = mirror._run(["git", "-c", f"http.extraHeader={header}",
+                             "not-a-git-command", token])
     assert code != 0
     assert token not in out and encoded not in out
 
@@ -285,8 +591,8 @@ def test_pull_job_with_a_warning(app_db, remotes: Remotes,
     add_repo("octo/alpha")
     db.set_setting("fetch_lfs", "1")
     real_run = mirror._run
-    monkeypatch.setattr(mirror, "_run", lambda cmd, timeout=0: (
-        (1, "lfs: smudge filter failed") if "lfs" in cmd else real_run(cmd)))
+    monkeypatch.setattr(mirror, "_run", lambda cmd, timeout=0, **kw: (
+        (1, "lfs: smudge filter failed") if "lfs" in cmd else real_run(cmd, **kw)))
     jobs.run_pull_job()
     job = db.recent_jobs(1)[0]
     assert (job["status"], job["ok_count"], job["fail_count"]) == ("warn", 1, 0)
