@@ -664,7 +664,7 @@ def test_running_jobs_are_closed_at_startup(app_db) -> None:
     assert job["finished_at"] is not None
     assert job["summary"] == "Interrupted by a restart"
     assert db.get_job(done)["status"] == "ok"
-    assert 'class="pill interrupted"' in client.get("/").text
+    assert 'class="pill interrupted"' in client.get("/jobs").text
     assert "hx-trigger" not in client.get(f"/jobs/{stale}").text
 
 

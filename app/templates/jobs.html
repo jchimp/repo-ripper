@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% set active = "jobs" %}
+{% block content %}
+<div class="eyebrow">Activity</div>
+<h1>Jobs</h1>
+
+{# Same panel as on the dashboard. It polls only while a job runs, and loads
+   this page again when the last job is done. #}
+<section class="live-region top-gap" aria-live="polite" aria-label="Running jobs">
+  {% include "_live_panel.html" %}
+</section>
+
+<form id="job-filters" class="filters job-filters top-gap" method="get" action="/jobs"
+      hx-get="/jobs" hx-target="#job-list" hx-swap="outerHTML"
+      hx-trigger="change" hx-push-url="true">
+  <div class="filter">
+    <label for="f-type">Job</label>
+    <select id="f-type" name="type">
+      <option value="">All jobs</option>
+      {% for spec in job_specs %}
+      <option value="{{ spec.key }}"{{ ' selected' if f.type == spec.key }}>{{ spec.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter">
+    <label for="f-status">Status</label>
+    <select id="f-status" name="status">
+      <option value="">All</option>
+      {% for st in statuses %}
+      <option value="{{ st }}"{{ ' selected' if f.status == st }}>{{ st }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter end">
+    <noscript><button type="submit">Apply</button></noscript>
+    <a class="btn ghost" href="/jobs">Clear</a>
+  </div>
+</form>
+
+{% include "_job_list.html" %}
+{% endblock %}

@@ -8,7 +8,17 @@ the version. Each line names the pull request (PR) that made the change.
 
 ## Unreleased
 
+### Added
+
+- **Jobs page** (`/jobs`, new item in the header). It shows the running jobs
+  (the same live panel as the Dashboard) and every recorded job run, newest
+  first, 50 on a page. Filters: job and status. (PR: jobs-page)
+
 ### Changed
+
+- The Dashboard no longer lists the recent job runs. The button "All job runs"
+  opens the Jobs page. The page of one job run links back to Jobs, and an
+  unknown run number goes to Jobs (was: the Dashboard).
 
 - **The pages look like GitHub**, in a dark and a light version: GitHub's
   colours, buttons, tabs, counters, state labels and code colours. Links are
