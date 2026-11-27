@@ -534,6 +534,23 @@ def query_repos(*, q: str = "", status: str = "", visibility: str = "", source: 
         return conn.execute(sql, args).fetchall()
 
 
+def repo_tab_counts() -> dict[str, int]:
+    """Count the repositories of each tab of the Repositories page.
+
+    Keys: 'active' (own, backup on), 'other' (own, backup off), 'watched'
+    (public repositories of others) and 'all'.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT "
+            "COALESCE(SUM(source = 'mine' AND enabled = 1), 0), "
+            "COALESCE(SUM(source = 'mine' AND enabled = 0), 0), "
+            "COALESCE(SUM(source = 'watched'), 0), "
+            "COUNT(*) FROM repos"
+        ).fetchone()
+    return {"active": row[0], "other": row[1], "watched": row[2], "all": row[3]}
+
+
 def get_repos(repo_ids: list[int]) -> list[sqlite3.Row]:
     """Return the rows with these ids, by name. Unknown ids are left out."""
     if not repo_ids:

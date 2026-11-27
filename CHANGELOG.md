@@ -10,6 +10,12 @@ the version. Each line names the pull request (PR) that made the change.
 
 ### Added
 
+- **Tabs on the Repositories page**: Active (your repositories with the backup
+  on, the default), Other (backup off), Watched (public repositories of other
+  people) and All. Each tab shows its count. The tab replaces the Source
+  filter; the Backup filter shows only on Watched and All. The panel "Watch a
+  public repository" is on the Watched tab. The Dashboard links open the All
+  tab. (PR: repo-tabs)
 - **Jobs page** (`/jobs`, new item in the header). It shows the running jobs
   (the same live panel as the Dashboard) and every recorded job run, newest
   first, 50 on a page. Filters: job and status. (PR: jobs-page)

@@ -907,40 +907,108 @@ def test_repo_list_filters_search_and_sort(app_db, inventory: dict[str, int]) ->
         assert resp.status_code == 200
         return _names(resp.text)
 
-    assert names("") == ["friend/tool", "octo/alpha", "octo/beta", "octo/delta", "octo/gamma_x"]
-    assert names("?q=ALPH") == ["octo/alpha"]
-    assert names("?q=_") == ["octo/gamma_x"]            # "_" is literal, not a wildcard
-    assert names("?q=%25") == []
-    assert names("?status=error") == ["octo/beta"]
-    assert names("?status=warn") == ["octo/gamma_x"]
-    assert names("?status=pending") == ["octo/delta"]
-    assert names("?status=running") == []
-    assert names("?visibility=private") == ["octo/beta"]
-    assert names("?source=watched") == ["friend/tool"]
-    assert names("?backup=off") == ["octo/gamma_x"]
-    assert names("?flag=gone") == ["octo/delta"]
-    assert names("?flag=verify") == ["friend/tool"]
-    assert names("?status=ok&source=mine") == ["octo/alpha"]
-    assert names("?sort=size")[:2] == ["octo/beta", "octo/alpha"]
-    assert names("?sort=synced")[:2] == ["octo/gamma_x", "octo/alpha"]
-    assert names("?sort=status")[:2] == ["octo/beta", "octo/gamma_x"]
-    assert names("?sort=name_desc")[0] == "octo/gamma_x"
-    assert names("?sort=;DROP TABLE repos")[0] == "friend/tool"    # unknown sort: default
+    # Tabs: Active (own, backup on) is the default.
+    assert names("") == ["octo/alpha", "octo/beta", "octo/delta"]
+    assert names("?tab=other") == ["octo/gamma_x"]
+    assert names("?tab=watched") == ["friend/tool"]
+    assert names("?tab=all") == ["friend/tool", "octo/alpha", "octo/beta", "octo/delta",
+                                 "octo/gamma_x"]
+    assert names("?tab=nope") == names("")              # unknown tab: Active
+    assert names("?backup=off") == names("")            # Active fixes the backup state
+    assert names("?status=ok") == ["octo/alpha"]
 
-    page = client.get("/repos?status=error").text
+    # Filters, on the All tab.
+    assert names("?tab=all&q=ALPH") == ["octo/alpha"]
+    assert names("?tab=all&q=_") == ["octo/gamma_x"]    # "_" is literal, not a wildcard
+    assert names("?tab=all&q=%25") == []
+    assert names("?tab=all&status=error") == ["octo/beta"]
+    assert names("?tab=all&status=warn") == ["octo/gamma_x"]
+    assert names("?tab=all&status=pending") == ["octo/delta"]
+    assert names("?tab=all&status=running") == []
+    assert names("?tab=all&visibility=private") == ["octo/beta"]
+    assert names("?tab=all&backup=off") == ["octo/gamma_x"]
+    assert names("?tab=all&flag=gone") == ["octo/delta"]
+    assert names("?tab=all&flag=verify") == ["friend/tool"]
+    assert names("?tab=all&sort=size")[:2] == ["octo/beta", "octo/alpha"]
+    assert names("?tab=all&sort=synced")[:2] == ["octo/gamma_x", "octo/alpha"]
+    assert names("?tab=all&sort=status")[:2] == ["octo/beta", "octo/gamma_x"]
+    assert names("?tab=all&sort=name_desc")[0] == "octo/gamma_x"
+    assert names("?tab=all&sort=;DROP TABLE repos")[0] == "friend/tool"   # unknown: default
+
+    page = client.get("/repos?tab=all&status=error").text
     assert "1 shown of 5" in page
     assert '<option value="error" selected>' in page
     assert 'hx-push-url="true"' in page
     assert 'hx-trigger="input changed delay:250ms, change"' in page
     assert "every 2s" not in page                       # idle: no polling
     assert "No repository matches these filters." in client.get("/repos?q=zzz").text
+    assert re.search(r'class="active" aria-current="page">All <span class="count">5</span>',
+                     page)
 
     # The HTMX request of the filter form gets the list only.
-    part = client.get("/repos?status=error", headers={"HX-Request": "true",
-                                                      "HX-Target": "repo-list"}).text
+    part = client.get("/repos?tab=all&status=error",
+                      headers={"HX-Request": "true", "HX-Target": "repo-list"}).text
     assert 'id="repo-list"' in part[:400]
     assert "<html" not in part and 'id="repo-filters"' not in part
-    assert 'hx-get="/repos?status=error"' in part
+    assert 'hx-get="/repos?tab=all&amp;status=error"' in part
+
+
+def test_repo_tabs_counts_and_filters_shown(app_db, inventory: dict[str, int]) -> None:
+    client, _ = app_db
+    assert db.repo_tab_counts() == {"active": 3, "other": 1, "watched": 1, "all": 5}
+    page = client.get("/repos").text
+    for label, count in (("Active", 3), ("Other", 1), ("Watched", 1), ("All", 5)):
+        assert re.search(rf'>{label} <span class="count">{count}</span>', page)
+    assert "3 shown of 3" in page
+    # The tab fixes the source; the backup drop-down shows only where it varies.
+    assert 'id="f-source"' not in page and 'id="f-backup"' not in page
+    assert 'name="tab" value="active"' in page
+    assert 'id="f-backup"' in client.get("/repos?tab=watched").text
+    assert 'id="f-backup"' in client.get("/repos?tab=all").text
+
+
+def test_repo_tabs_empty_states(app_db) -> None:
+    client, _ = app_db
+    add_repo("octo/off", enabled=0)
+    assert "No repository of yours has the backup on." in client.get("/repos").text
+    assert "You watch no public repositories." in client.get("/repos?tab=watched").text
+    db.set_repos_enabled([db.get_repo_by_name("octo/off")["id"]], True)
+    assert "All your repositories have the backup on." in client.get("/repos?tab=other").text
+
+
+def test_bulk_backup_says_where_the_rows_went(app_db, inventory: dict[str, int]) -> None:
+    client, token = app_db
+    headers = {"X-CSRF-Token": token, "HX-Request": "true", "HX-Target": "repo-list"}
+    ids = [inventory["octo/alpha"]]
+    resp = client.post("/repos/bulk", data={"ids": ids, "action": "disable", "tab": "active"},
+                       headers=headers)
+    assert "Backup turned off for 1 repositories. They are now on the Other tab." in resp.text
+    assert "octo/alpha" not in _names(resp.text)        # it left the Active tab
+    resp = client.post("/repos/bulk", data={"ids": ids, "action": "enable", "tab": "other"},
+                       headers=headers)
+    assert "They are now on the Active tab." in resp.text
+    resp = client.post("/repos/bulk", data={"ids": ids, "action": "enable", "tab": "all"},
+                       headers=headers)
+    assert "now on the" not in resp.text                # the All tab keeps the rows
+    # Without HTMX the browser goes back to the same tab.
+    resp = client.post("/repos/bulk", data={"ids": ids, "action": "enable", "tab": "watched",
+                                            "csrf_token": token})
+    assert resp.status_code == 303 and resp.headers["location"] == "/repos?tab=watched"
+
+
+def test_all_tab_has_a_place_for_the_stop_watching_message(app_db,
+                                                           inventory: dict[str, int]) -> None:
+    client, _ = app_db
+    page = client.get("/repos?tab=all").text
+    assert "Stop watching friend/tool" in page
+    assert 'id="watch-result"' in page and "Watch a public repository" not in page
+
+
+def test_dashboard_links_open_the_all_tab(app_db, inventory: dict[str, int]) -> None:
+    client, _ = app_db
+    page = client.get("/").text
+    links = re.findall(r'href="(/repos\?[^"]*)"', page)
+    assert links and all(link.startswith("/repos?tab=all&amp;") for link in links)
 
 
 def test_repo_list_empty_state_names_the_next_action(app_db) -> None:

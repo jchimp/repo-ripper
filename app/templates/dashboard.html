@@ -77,7 +77,7 @@
         {% endfor %}
       </ul>
       {% if health.attention_more %}
-      <div class="panel-foot"><a href="/repos?sort=status">{{ health.attention_more }} more. Open the list with the problems first.</a></div>
+      <div class="panel-foot"><a href="/repos?tab=all&amp;sort=status">{{ health.attention_more }} more. Open the list with the problems first.</a></div>
       {% endif %}
       {% elif repo_count %}
       <div class="empty">No failed or stale repository.</div>

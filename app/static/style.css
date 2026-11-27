@@ -535,6 +535,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .watch-row { display: flex; gap: 10px; align-items: center; max-width: 640px; }
 .watch-row input[type=text] { flex: 1; min-width: 0; }
 .watch-result { min-height: 20px; margin-top: 10px; font-size: 13px; }
+.watch-result.standalone { margin: 0 0 16px; }
+.watch-result.standalone:empty { min-height: 0; margin: 0; }
 .watch-msg { overflow-wrap: anywhere; }
 .watch-msg.ok { color: var(--ok); }
 .watch-msg.err { color: color-mix(in srgb, var(--fail) 70%, var(--text)); }
@@ -787,6 +789,9 @@ input[readonly] { color: var(--muted); }
   padding: 14px 16px; margin-bottom: 16px;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
 }
+/* Fewer drop-downs on the Repositories tabs: 3 (Active, Other) or 4 (Watched, All). */
+.filters.nf-3 { grid-template-columns: minmax(150px, 1.6fr) repeat(3, minmax(0, 1fr)) minmax(0, 1.6fr) auto; }
+.filters.nf-4 { grid-template-columns: minmax(150px, 1.6fr) repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr) auto; }
 .filter { min-width: 0; }
 .filter label { font-size: 12px; margin-bottom: 4px; white-space: nowrap; }
 .filter select, .filter input { width: 100%; }
@@ -794,7 +799,7 @@ input[readonly] { color: var(--muted); }
 /* Jobs page: two drop-downs and Clear, at a fixed width (not the full row). */
 .filters.job-filters { grid-template-columns: minmax(0, 260px) minmax(0, 180px) auto; justify-content: start; }
 @media (max-width: 1000px) {
-  .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .filters, .filters.nf-3, .filters.nf-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .filter.grow { grid-column: 1 / -1; }
   .filter.end { grid-column: -2 / -1; }
 }
@@ -828,7 +833,7 @@ td.sel input, th.sel input { display: block; }
 @media (max-width: 760px) {
   .dash-cols { grid-template-columns: 1fr; }
   .facts { grid-template-columns: 1fr 1fr; }
-  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filters, .filters.nf-3, .filters.nf-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filters.job-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filter.end { grid-column: 1 / -1; }
   .col-size, .col-sync { display: none; }

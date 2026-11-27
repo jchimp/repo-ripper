@@ -10,27 +10,46 @@ from ..web import render
 
 router = APIRouter()
 
-_FILTER_KEYS = ("q", "status", "visibility", "source", "backup", "flag", "sort")
+_FILTER_KEYS = ("tab", "q", "status", "visibility", "backup", "flag", "sort")
+
+# Tab -> (source, backup) filter of `db.query_repos`. On "watched" and "all" the
+# backup state varies, so those tabs show the Backup drop-down.
+TABS: dict[str, tuple[str, str]] = {
+    "active": ("mine", "on"),
+    "other": ("mine", "off"),
+    "watched": ("watched", ""),
+    "all": ("", ""),
+}
+_DEFAULTS = {"tab": "active", "sort": "name"}
 
 
 def _filters(values: dict[str, str]) -> dict[str, str]:
     """Take the filter values out of a query string or a form."""
     f = {key: str(values.get(key) or "").strip() for key in _FILTER_KEYS}
+    if f["tab"] not in TABS:
+        f["tab"] = "active"
     if f["sort"] not in db.REPO_SORTS:
         f["sort"] = "name"
+    if TABS[f["tab"]][1]:
+        f["backup"] = ""          # fixed by the tab
     return f
 
 
 def _list_ctx(f: dict[str, str], message: str = "", message_kind: str = "info") -> dict:
-    repos = db.query_repos(**f, running=progress.running_names())
+    source, backup = TABS[f["tab"]]
+    args = {k: v for k, v in f.items() if k != "tab"}
+    args.update(source=source, backup=backup or f["backup"])
+    repos = db.query_repos(**args, running=progress.running_names())
     # Only the values that differ from the default, so that the URL is short.
-    query = urlencode({k: v for k, v in f.items() if v and (k, v) != ("sort", "name")})
+    query = urlencode({k: v for k, v in f.items() if v and _DEFAULTS.get(k) != v})
+    counts = db.repo_tab_counts()
     return {
         "repos": repos,
-        "total": db.count_repos(),
+        "total": counts[f["tab"]],
+        "counts": counts,
         "f": f,
         "query": query,
-        "filtered": any(v for k, v in f.items() if k != "sort"),
+        "filtered": any(v for k, v in f.items() if k not in ("tab", "sort")),
         # The list polls only while a job runs.
         "polling": bool(db.running_jobs()),
         "message": message,
@@ -67,8 +86,8 @@ def repos_bulk(
     request: Request,
     ids: Annotated[list[int] | None, Form()] = None,
     action: str = Form(""),
-    q: str = Form(""), status: str = Form(""), visibility: str = Form(""),
-    source: str = Form(""), backup: str = Form(""), flag: str = Form(""),
+    tab: str = Form(""), q: str = Form(""), status: str = Form(""),
+    visibility: str = Form(""), backup: str = Form(""), flag: str = Form(""),
     sort: str = Form(""),
 ):
     """Apply one action to the checked rows.
@@ -83,6 +102,10 @@ def repos_bulk(
     elif action in ("enable", "disable"):
         count = db.set_repos_enabled(ids, action == "enable")
         message = f"Backup turned {'on' if action == 'enable' else 'off'} for {count} repositories."
+        if tab in ("active", "other", ""):
+            # The rows leave this tab; say where they went.
+            message += (" They are now on the Active tab." if action == "enable"
+                        else " They are now on the Other tab.")
     elif action == "assets_on":
         count = db.set_repos_assets(ids, True)
         message = f"Release files turned on for {count} repositories."
@@ -104,11 +127,11 @@ def repos_bulk(
         message, kind = "Unknown action.", "warn"
 
     if request.headers.get("HX-Request"):
-        f = _filters({"q": q, "status": status, "visibility": visibility, "source": source,
+        f = _filters({"tab": tab, "q": q, "status": status, "visibility": visibility,
                       "backup": backup, "flag": flag, "sort": sort})
         return render(request, "_repo_list.html", _list_ctx(f, message, kind))
     request.session["flash"] = message
-    return RedirectResponse("/repos", status_code=303)
+    return RedirectResponse(f"/repos?tab={tab}" if tab in TABS else "/repos", status_code=303)
 
 
 @router.post("/repos/{repo_id}/toggle")
