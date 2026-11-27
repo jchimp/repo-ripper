@@ -10,6 +10,7 @@
   --line:    #2c333f;
   --text:    #e6e9ef;
   --muted:   #8b95a6;
+  --field:   #14171c;   /* background of text boxes and drop-downs */
   --accent:  #45c7bd;   /* mirror/sync teal */
   --accent-d:#2f8f88;
   --on-accent:#06110f;  /* text on a filled accent button */
@@ -33,6 +34,7 @@
   --line:    #d3d9e2;
   --text:    #1b2430;
   --muted:   #586474;
+  --field:   #ffffff;
   --accent:  #0b7a72;
   --accent-d:#0f8a81;
   --on-accent:#ffffff;
@@ -163,7 +165,7 @@ h2 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: 0.3px; }
 
 table { width: 100%; border-collapse: collapse; }
 th {
-  text-align: left;
+  text-align: left; white-space: nowrap;
   font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
   color: var(--muted); font-weight: 600;
   padding: 10px 16px; border-bottom: 1px solid var(--line);
@@ -172,7 +174,8 @@ td { padding: 11px 16px; border-bottom: 1px solid var(--line); font-size: 14px; 
 tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--panel-2); }
 td.mono, .mono-cell { font-family: var(--mono); font-size: 13px; }
-td.num { text-align: right; font-family: var(--mono); }
+td.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+.col-sync { white-space: nowrap; }
 .repo-name { font-family: var(--mono); font-size: 13px; }
 .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
 
@@ -213,6 +216,7 @@ button, .btn {
   color: var(--text); background: var(--panel-2);
   border: 1px solid var(--line); border-radius: 6px;
   padding: 7px 14px; cursor: pointer;
+  line-height: 20px; white-space: nowrap;
 }
 button:hover, .btn:hover { border-color: var(--accent-d); }
 button.primary, .btn.primary {
@@ -225,13 +229,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, .toggle:focus-visibl
 }
 
 label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-input[type=text], input[type=password] {
-  width: 100%; padding: 9px 11px;
-  background: var(--bg); color: var(--text);
+/* --- form controls: the one definition for text boxes and drop-downs ------
+   Every control has the same height (36px), border, radius and focus ring, so
+   a row of controls and buttons lines up. Layout rules elsewhere set only the
+   width. */
+input[type=text], input[type=password], input[type=search], input[type=number],
+input[type=url], input[type=email], select, textarea {
+  box-sizing: border-box; height: 36px; padding: 0 11px; max-width: 100%;
+  background-color: var(--field); color: var(--text);
   border: 1px solid var(--line); border-radius: 6px;
-  font-family: var(--mono); font-size: 13px;
+  font-family: var(--mono); font-size: 13px; line-height: 1.2;
 }
-input:focus { border-color: var(--accent-d); outline: none; }
+input[type=text], input[type=password], input[type=search] { width: 100%; }
+input[type=number] { width: 90px; }
+textarea { height: auto; min-height: 80px; padding: 9px 11px; width: 100%; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.75; }
+input:hover, select:hover, textarea:hover {
+  border-color: color-mix(in srgb, var(--accent-d) 55%, var(--line));
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent-d); outline: none; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Drop-down: no native look (it differs per browser and ignores the theme).
+   The arrow is two gradients, so it takes its colour from the theme. */
+select {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 30px; cursor: pointer;
+  font-family: var(--sans); text-overflow: ellipsis;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 15px center, right 10px center;
+  background-size: 5px 5px; background-repeat: no-repeat;
+}
+select option { background: var(--panel); color: var(--text); }
+input[type=checkbox]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .field { margin-bottom: 18px; }
 .field.cron input { max-width: 220px; }
@@ -409,13 +444,6 @@ button.danger:hover { border-color: var(--fail); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .token-form { margin-top: 12px; }
 
-select {
-  padding: 8px 10px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px; font-family: var(--sans); font-size: 13px;
-}
-select:focus-visible, input[type=checkbox]:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
-}
 .repo-filter { flex-wrap: wrap; align-items: flex-end; gap: 14px; }
 .repo-filter .rf-search { flex: 1; min-width: 200px; }
 .repo-filter .check { margin-bottom: 8px; }
@@ -561,16 +589,6 @@ button:disabled:hover { border-color: var(--line); }
 button.primary:disabled:hover { background: var(--accent-d); border-color: var(--accent-d); }
 a.btn { display: inline-block; text-decoration: none; }
 a.btn.ghost { background: transparent; }
-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-input[type=search], input[type=number], select {
-  padding: 8px 10px;
-  background: var(--bg); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px;
-  font-family: var(--mono); font-size: 13px;
-}
-input[type=search] { width: 100%; }
-input[type=number] { width: 90px; }
 input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 input[readonly] { color: var(--muted); }
 
@@ -700,13 +718,24 @@ input[readonly] { color: var(--muted); }
 /* --- repository list: filters and bulk actions ----------------------------- */
 
 .filters {
-  display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+  display: grid; gap: 12px; align-items: end;
+  /* search | five filters | sort (longer texts) | Clear */
+  grid-template-columns: minmax(150px, 1.6fr) repeat(5, minmax(0, 1fr)) minmax(0, 1.6fr) auto;
   padding: 14px 16px; margin-bottom: 16px;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
 }
-.filter label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-.filter.grow { flex: 1 1 200px; }
-.filter.end { display: flex; gap: 8px; margin-left: auto; }
+.filter { min-width: 0; }
+.filter label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+  white-space: nowrap;
+}
+.filter select, .filter input { width: 100%; }
+.filter.end { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 1000px) {
+  .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .filter.grow { grid-column: 1 / -1; }
+  .filter.end { grid-column: -2 / -1; }
+}
 
 .list-head { flex-wrap: wrap; }
 .bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
@@ -737,9 +766,8 @@ td.sel input, th.sel input { display: block; }
 @media (max-width: 760px) {
   .dash-cols { grid-template-columns: 1fr; }
   .facts { grid-template-columns: 1fr 1fr; }
-  .filter { flex: 1 1 130px; }
-  .filter select { width: 100%; }
-  .filter.end { margin-left: 0; }
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter.end { grid-column: 1 / -1; }
   .col-size, .col-sync { display: none; }
   .bulk-label { flex-basis: 100%; }
   th, td { padding-left: 10px; padding-right: 10px; }
@@ -780,14 +808,9 @@ td.sel input, th.sel input { display: block; }
 .browse-bar label, .search-opts label { margin: 0; }
 .ref-picker, .code-search, .search-opts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .search-opts .check { margin: 0; }
-select {
-  max-width: 260px; padding: 7px 9px;
-  background: var(--bg); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px;
-  font-family: var(--mono); font-size: 13px;
-}
-select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.code-search input[type=text] { width: 220px; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.code-search input[type=text] { width: 280px; }
+.ref-picker select { max-width: 260px; }
 .rev-label, .branch {
   font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 6px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
