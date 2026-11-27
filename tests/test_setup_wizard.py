@@ -179,7 +179,7 @@ def test_changed_secret_key_makes_the_token_not_set(authed: tuple[TestClient, st
     assert runtime.github_token() == ""
     assert runtime.stored_token_unreadable() and runtime.token_source() == "none"
     message = "The stored token cannot be read because SECRET_KEY changed. Enter the token again."
-    for path in ("/settings", "/setup/token", "/"):
+    for path in ("/settings/storage", "/setup/token", "/"):
         resp = client.get(path)
         assert resp.status_code == 200, path
         assert message in resp.text, path
@@ -426,7 +426,7 @@ def test_settings_token_replace_and_remove(authed: tuple[TestClient, str],
                                            gh: FakeGitHub) -> None:
     client, token = authed
     form = {"csrf_token": token}
-    page = client.get("/settings").text
+    page = client.get("/settings/storage").text
     assert "No GitHub token is set." in page and "Run setup again" in page
     assert "Remove stored token" not in page
 
@@ -451,7 +451,7 @@ def test_settings_storage_change_warns_about_existing_mirrors(
         authed: tuple[TestClient, str], tmp_path: Path) -> None:
     client, token = authed
     form = {"csrf_token": token}
-    page = client.get("/settings").text
+    page = client.get("/settings/storage").text
     assert 'id="ff-mirror_root"' in page and 'id="ff-protection_root"' in page
 
     resp = client.post("/settings/storage", data={
@@ -479,11 +479,11 @@ def test_settings_storage_change_warns_about_existing_mirrors(
 
 def test_auto_enable_new_checkbox_is_saved(authed: tuple[TestClient, str]) -> None:
     client, token = authed
-    assert "Turn on backup for newly found repositories" in client.get("/settings").text
+    assert "Turn on backup for newly found repositories" in client.get("/settings/discovery").text
     assert db.get_bool("auto_enable_new") is True  # default on
-    client.post("/settings", data={"csrf_token": token})
+    client.post("/settings/discovery", data={"csrf_token": token})
     assert db.get_bool("auto_enable_new") is False
-    client.post("/settings", data={"csrf_token": token, "auto_enable_new": "on"})
+    client.post("/settings/discovery", data={"csrf_token": token, "auto_enable_new": "on"})
     assert db.get_bool("auto_enable_new") is True
 
 

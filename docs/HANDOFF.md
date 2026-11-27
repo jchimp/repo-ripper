@@ -1,16 +1,16 @@
 # Handoff — repo-ripper
-_Last updated: 2026-11-27 · branch: `main` (at the merge of PR #19) · phase: UI work for 0.3.0, 3 of 5 done_
+_Last updated: 2026-11-27 · branch: `settings-tabs` (UI 4/5, PR open) · phase: UI work for 0.3.0, 4 of 5 built_
 
 ## Status
 
-The UI work for 0.3.0 has five PRs. Three are merged:
+The UI work for 0.3.0 has five PRs. Three are merged, one is in review:
 
 | # | Part | PR | State |
 |---|---|---|---|
 | 1 | GitHub-style theme, light and dark, Octicons (decision D-27) | #17 | merged |
 | 2 | Jobs page `/jobs`: live panel, all job runs, filters, pages | #18 | merged |
 | 3 | Repository tabs: Active, Other, Watched, All | #19 | merged |
-| 4 | Settings tabs | — | not started |
+| 4 | Settings tabs | settings-tabs | in review |
 | 5 | Storage page | — | not started |
 | — | Release 0.3.0 (version, CHANGELOG section, tag `v0.3.0`) | — | after 4 and 5 |
 
@@ -25,7 +25,20 @@ The UI work for 0.3.0 has five PRs. Three are merged:
   follow-ups in `docs/PROGRESS.md`; remove the folders `%TEMP%\rr-shots-*` (left by
   the screenshot script, the delete was not allowed in the session).
 
-## This session
+## This session (settings tabs)
+
+- Branch `settings-tabs`: `app/routes/settings.py` has `TABS` (slug, title, and the
+  keys each tab saves). `GET /settings/{section}`, `POST /settings/{section}`;
+  `/settings` redirects to `/settings/storage`. The fixed POST routes (`storage`,
+  `token`, `token/remove`, `test-telegram`) are registered before the general one.
+  The old `POST /settings` is removed (Jeremy's choice).
+- New tests in `tests/test_settings_tabs.py`; the other settings tests post to the tab URLs.
+- CSS: `.settings-layout`, `.settings-tabs`, `.settings-panel`. The global `.notice`
+  rule has side margins (12px 16px); the Settings panel overrides it. This was the
+  cause of the "message box too wide" todo.
+- Deleted the merged local branches `progress-handoff` and `review-fixes`.
+
+## Earlier session
 
 - Planned the five UI PRs. Jeremy accepted all recommendations: theme first; the
   Dashboard keeps the live panel and "Run now"; third repository tab is "Watched";
@@ -47,21 +60,21 @@ Q1: Settings tabs: which sections go on which tab? Recommendation: 6 tabs —
   **Storage and token** (the two folder fields and the token, already their own forms),
   **Discovery** (with "Parallel pulls" from the Sync section, which has only that one
   field), **Metadata** (with release files), **Schedules**, **Protection copy**,
-  **Notifications** (Telegram).
-A1:
+  **Notifications** (Telegram).  
+A1: 6 tab, recommendations
 
-Q2: Storage page: show the size of the protection copy too? It needs a measurement
-  of the protection folder (slow over SMB) or the byte count from the rsync output.
-  Recommendation: not in PR 5; show used and free disk space of that folder only.
-A2:
+Q2: Storage page: show the size of the protection copy too? It needs a measurement  
+  of the protection folder (slow over SMB) or the byte count from the rsync output.  
+  Recommendation: not in PR 5; show used and free disk space of that folder only.  
+A2: dont show for now.
 
-Q3: Header order after PR 5? Recommendation: Dashboard, Repositories, Jobs, Storage,
-  Settings.
-A3:
+Q3: Header order after PR 5? Recommendation: Dashboard, Repositories, Jobs, Storage,  
+  Settings.  
+A3: Dashboard, Repos, Jobs, Storage, Settings
 
 ## Next steps
 
-1. **Branch `settings-tabs` from `main` (UI 4/5).**
+1. **Done, in review: branch `settings-tabs` (UI 4/5).** The notes below were the plan.
    - Routes: `GET /settings/{section}` and `POST /settings/{section}`, sections from a
      fixed list (Q1); `/settings` redirects to the first tab. Keep the existing POST
      routes `/settings/storage`, `/settings/token`, `/settings/token/remove` and
@@ -110,7 +123,6 @@ Make temp folders inside the session scratchpad, not in `%TEMP%`.
 ## Resume prompt
 
 > In the repo-ripper repository, read `docs/HANDOFF.md`, `CLAUDE.md` and
-> `docs/PROGRESS.md`. Check my A1 to A3 answers under "Open questions" in the
-> handoff (use the recommendation where an answer is empty). Confirm that `main`
-> has PR #19 merged and no open UI branches, then make a short plan for UI 4/5
-> (settings tabs) on a new branch `settings-tabs` from `main`, and wait for my go.
+> `docs/PROGRESS.md`. Confirm that `main` has the `settings-tabs` PR merged and no
+> open UI branches, then make a short plan for UI 5/5 (Storage page) on a new
+> branch `storage-page` from `main`, using answers A2 and A3, and wait for my go.

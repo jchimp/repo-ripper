@@ -60,11 +60,12 @@ def test_login_without_csrf_is_refused(client: TestClient) -> None:
 
 def test_post_without_csrf_is_refused(authed: tuple[TestClient, str]) -> None:
     client, token = authed
-    assert client.post("/settings", data={"schedule_scan": "0 1 * * *"}).status_code == 403
-    assert client.post("/settings", data={"csrf_token": "wrong"}).status_code == 403
+    assert client.post("/settings/schedules",
+                       data={"schedule_scan": "0 1 * * *"}).status_code == 403
+    assert client.post("/settings/schedules", data={"csrf_token": "wrong"}).status_code == 403
     assert db.get_setting("schedule_scan") == "0 3 * * *"
     # Header form, as HTMX sends it.
-    resp = client.post("/settings", data={"schedule_scan": "0 1 * * *"},
+    resp = client.post("/settings/schedules", data={"schedule_scan": "0 1 * * *"},
                        headers={"X-CSRF-Token": token})
     assert resp.status_code == 303
     assert db.get_setting("schedule_scan") == "0 1 * * *"
@@ -85,14 +86,15 @@ def test_login_throttle(client: TestClient) -> None:
 def test_secret_setting_is_not_echoed(authed: tuple[TestClient, str]) -> None:
     client, token = authed
     secret = "123456:SECRET-BOT-TOKEN"
-    client.post("/settings", data={"csrf_token": token, "telegram_bot_token": secret})
+    client.post("/settings/notifications", data={"csrf_token": token, "telegram_bot_token": secret})
     assert db.get_setting("telegram_bot_token") == secret
-    assert secret not in client.get("/settings").text
+    assert secret not in client.get("/settings/notifications").text
     # Empty field keeps the stored value.
-    client.post("/settings", data={"csrf_token": token, "telegram_bot_token": ""})
+    client.post("/settings/notifications", data={"csrf_token": token, "telegram_bot_token": ""})
     assert db.get_setting("telegram_bot_token") == secret
     # Explicit clear removes it.
-    client.post("/settings", data={"csrf_token": token, "telegram_bot_token_clear": "on"})
+    client.post("/settings/notifications",
+                data={"csrf_token": token, "telegram_bot_token_clear": "on"})
     assert db.get_setting("telegram_bot_token") == ""
 
 
@@ -140,14 +142,14 @@ def test_job_registry_drives_dashboard_and_settings(authed: tuple[TestClient, st
     from app import jobs, scheduler
     client, token = authed
     dash = client.get("/").text
-    settings_html = client.get("/settings").text
+    settings_html = client.get("/settings/schedules").text
     for spec in jobs.JOBS.values():
         assert spec.label in dash
         assert f'name="{spec.schedule_key}"' in settings_html
     # An empty schedule removes the job from the scheduler: manual only.
-    client.post("/settings", data={"csrf_token": token, "schedule_scan": ""})
+    client.post("/settings/schedules", data={"csrf_token": token, "schedule_scan": ""})
     assert scheduler.next_runs()["scan"] is None
-    client.post("/settings", data={"csrf_token": token, "schedule_scan": "0 4 * * *"})
+    client.post("/settings/schedules", data={"csrf_token": token, "schedule_scan": "0 4 * * *"})
     assert scheduler.next_runs()["scan"] is not None
 
 
@@ -167,7 +169,7 @@ def test_version_shows_in_the_footer(authed: tuple[TestClient, str]) -> None:
     import app as app_package
     client, _token = authed
     assert app_package.__version__ == "0.2.0"
-    assert f"repo-ripper {app_package.__version__}</footer>" in client.get("/settings").text
+    assert f"repo-ripper {app_package.__version__}</footer>" in client.get("/settings/storage").text
     # Not on the sign-in page: a visitor without a session learns nothing.
     client.cookies.clear()
     assert "app-footer" not in client.get("/login").text

@@ -273,13 +273,13 @@ def test_job_downloads_for_repositories_with_the_switch_on(app_fake) -> None:
 def test_settings_store_the_limits(app_fake) -> None:
     client, _fake = app_fake
     token = sign_in(client)
-    page = client.get("/settings").text
+    page = client.get("/settings/metadata").text
     assert 'name="assets_keep_releases"' in page and 'value="10"' in page
     assert 'name="assets_max_mb"' in page and 'value="2048"' in page
-    client.post("/settings", data={"csrf_token": token, "assets_keep_releases": "3",
+    client.post("/settings/metadata", data={"csrf_token": token, "assets_keep_releases": "3",
                                    "assets_max_mb": "1024"})
     assert (assets_job.keep_releases(), assets_job.max_mb()) == (3, 1024)
-    client.post("/settings", data={"csrf_token": token, "assets_keep_releases": "abc",
+    client.post("/settings/metadata", data={"csrf_token": token, "assets_keep_releases": "abc",
                                    "assets_max_mb": "0"})
     assert (assets_job.keep_releases(), assets_job.max_mb()) == (3, 1)
 

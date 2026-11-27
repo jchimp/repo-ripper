@@ -75,7 +75,7 @@ def login(client: TestClient, password: str = TEST_PASSWORD) -> str:
         "username": TEST_USER, "password": password, "csrf_token": token,
     })
     assert resp.status_code == 303, resp.text
-    return csrf_from(client.get("/settings").text)
+    return csrf_from(client.get("/settings/storage").text)
 
 
 @pytest.fixture

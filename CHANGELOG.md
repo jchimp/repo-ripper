@@ -10,6 +10,10 @@ the version. Each line names the pull request (PR) that made the change.
 
 ### Added
 
+- **Tabs on the Settings page**: Storage and token, Discovery, Metadata,
+  Schedules, Protection copy and Notifications. Each tab has its own URL
+  (`/settings/<tab>`) and its own Save button. `/settings` opens the first tab.
+  (PR: settings-tabs)
 - **Tabs on the Repositories page**: Active (your repositories with the backup
   on, the default), Other (backup off), Watched (public repositories of other
   people) and All. Each tab shows its count. The tab replaces the Source
@@ -22,6 +26,12 @@ the version. Each line names the pull request (PR) that made the change.
 
 ### Changed
 
+- A save on one Settings tab writes only the values of that tab. Before, the one
+  big form set every checkbox that was not in the form to off. "Parallel pulls"
+  moved from its own Sync section to the Discovery tab. A bad schedule shows the
+  Schedules tab again with the error, and the error boxes are no longer wider
+  than the form. The old route `POST /settings` (save all sections) is removed.
+  (PR: settings-tabs)
 - The Dashboard no longer lists the recent job runs. The button "All job runs"
   opens the Jobs page. The page of one job run links back to Jobs, and an
   unknown run number goes to Jobs (was: the Dashboard).

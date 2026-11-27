@@ -1232,12 +1232,12 @@ def test_run_now_redirects(app_db, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_pull_workers_setting(app_db) -> None:
     client, token = app_db
     assert jobs.pull_workers() == 4
-    page = client.get("/settings").text
-    assert "<h2>Sync</h2>" in page and 'name="pull_workers"' in page
-    assert 'name="schedule_verify"' in page
+    page = client.get("/settings/discovery").text
+    assert 'name="pull_workers"' in page
+    assert 'name="schedule_verify"' in client.get("/settings/schedules").text
 
     def save(value: str) -> int:
-        client.post("/settings", data={"csrf_token": token, "pull_workers": value})
+        client.post("/settings/discovery", data={"csrf_token": token, "pull_workers": value})
         return jobs.pull_workers()
 
     assert save("6") == 6

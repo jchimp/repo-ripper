@@ -875,6 +875,43 @@ td.sel input, th.sel input { display: block; }
 .state-tabs.sub { border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 .repo-tabs .count, .state-tabs .count { margin-left: 2px; }
 
+/* Settings: vertical tab list on the left, like GitHub's settings menu.
+   Below 760px it becomes a horizontal bar, like .repo-tabs. */
+.settings-layout {
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px;
+  align-items: start; margin-top: 20px;
+}
+.settings-tabs { display: flex; flex-direction: column; gap: 2px; }
+.settings-tabs a {
+  display: block; padding: 6px 12px; border-radius: var(--radius);
+  color: var(--text); font-size: 14px; position: relative;
+}
+.settings-tabs a:hover { text-decoration: none; background: var(--panel-2); }
+.settings-tabs a.active { font-weight: 600; background: var(--panel-2); }
+.settings-tabs a.active::before {
+  content: ""; position: absolute; left: -8px; top: 6px; bottom: 6px;
+  width: 4px; border-radius: var(--radius); background: var(--accent);
+}
+/* The general .notice rule has side margins for boxes inside a panel. Here a
+   notice lines up with the form, and a field error is not wider than needed. */
+.settings-panel .notice { margin: 8px 0; }
+.settings-panel > .saved, .settings-panel > .notice { margin: 0 0 20px; }
+.settings-panel .field .notice { max-width: 520px; }
+@media (max-width: 760px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .settings-tabs {
+    flex-direction: row; flex-wrap: wrap; gap: 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .settings-tabs a {
+    padding: 8px 12px; border-radius: 0;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .settings-tabs a:hover { background: none; border-bottom-color: var(--line); }
+  .settings-tabs a.active { background: none; border-bottom-color: var(--tab-active); }
+  .settings-tabs a.active::before { display: none; }
+}
+
 .browse-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .browse-bar label, .search-opts label { margin: 0; }
 .ref-picker, .code-search, .search-opts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
